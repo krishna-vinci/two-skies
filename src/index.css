@@ -2,6 +2,7 @@
 
 :root { color-scheme: dark; }
 html, body, #root { height: 100%; margin: 0; background: #0b1020; }
+html, body { overscroll-behavior: none; }
 body {
   font-family: "Inter", "Noto Sans Thai", system-ui, sans-serif;
   color: #fff;

@@ -1,13 +1,15 @@
 import { AnimatePresence } from 'motion/react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { CoupleChip } from './components/CoupleChip'
 import { DebugPanel, isDebug } from './components/DebugPanel'
 import { DetailView, type Rect } from './components/Detail/DetailView'
 import { NotifySheet } from './components/NotifySheet'
+import { PullIndicator } from './components/PullIndicator'
 import { SkyPanel } from './components/SkyPanel'
 import { TogetherSheet } from './components/TogetherSheet'
 import { DEFAULT_PLACE, placeById, placesFor } from './lib/places'
 import { placeLabels, useI18n } from './lib/i18n'
+import { usePullToRefresh } from './lib/usePullToRefresh'
 import type { Owner } from './lib/types'
 import type { SkyInput } from './sky/skyState'
 
@@ -45,6 +47,8 @@ export default function App() {
   const [debug, setDebug] = useState<SkyInput | null>(null)
   const onDebug = useCallback((i: SkyInput) => setDebug(i), [])
   const showDebug = isDebug()
+  const rootRef = useRef<HTMLDivElement>(null)
+  const ptr = usePullToRefresh(rootRef, overlay === null)
 
   // Back button / swipe-back closes the top overlay instead of leaving the app.
   useEffect(() => {
@@ -82,7 +86,8 @@ export default function App() {
   }
 
   return (
-    <div className="relative flex h-dvh w-full flex-col overflow-hidden md:flex-row">
+    <div ref={rootRef} className="relative flex h-dvh w-full flex-col overflow-hidden md:flex-row">
+      <PullIndicator {...ptr} />
       {owners.map((o, i) => (
         <SkyPanel
           key={o}

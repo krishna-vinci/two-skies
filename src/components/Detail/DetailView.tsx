@@ -1,4 +1,7 @@
 import { motion, useReducedMotion } from 'motion/react'
+import { useRef } from 'react'
+import { PullIndicator } from '../PullIndicator'
+import { usePullToRefresh } from '../../lib/usePullToRefresh'
 import { SkyCanvas } from '../SkyCanvas'
 import { Chevron, WeatherIcon } from '../icons'
 import { weatherLabel } from '../../../shared/messages.js'
@@ -27,6 +30,8 @@ export function DetailView({ place, from, override, onClose }: { place: Place; f
   const sky = useSky(place, w, override)
   const now = useNow(30_000)
   const reduce = useReducedMotion()
+  const scroller = useRef<HTMLDivElement>(null)
+  const ptr = usePullToRefresh(scroller, true)
   const kind = w ? describeWeather(w.current.code).kind : null
   const { t, lang } = useI18n()
   const labels = placeLabels(place, lang)
@@ -48,7 +53,8 @@ export function DetailView({ place, from, override, onClose }: { place: Place; f
     >
       <SkyCanvas state={sky} />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/35" />
-      <div className="relative z-10 h-full overflow-y-auto overscroll-contain">
+      <PullIndicator {...ptr} />
+      <div ref={scroller} className="relative z-10 h-full overflow-y-auto overscroll-contain">
         <div className="mx-auto max-w-4xl px-4 pb-16 pt-[max(1rem,env(safe-area-inset-top))] md:px-8">
           <div className="flex items-center justify-between">
             <button onClick={onClose} aria-label={t('back')} className="glass flex h-11 w-11 items-center justify-center" style={{ borderRadius: 999 }}>

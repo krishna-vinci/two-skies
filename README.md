@@ -10,6 +10,7 @@ Private weather PWA (Open-Meteo): Kothagudem/Hyderabad + Khon Kaen/Bangkok.
 - Push state (VAPID keys + subscriptions) lives in `~/.local/state/two-skies/push.json` (mode 600). Back it up if you care; deleting it just means re-enabling notifications on each device.
 - Shared rules/messages used by both UI and server: `shared/` (rain nowcast, air/heat alerts, EN/TH text).
 - Language: EN/ไทย toggle at the seam; notifications follow the language chosen when subscribing.
+- Pull down from the top (home or detail) to refresh; data also refreshes on app focus after 2 min and every 10 min.
 - Debug sky: `?debug=1` (sliders), `?debug=1&open=him|her` (opens detail).
 
 ## Deployments
