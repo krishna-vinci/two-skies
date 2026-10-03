@@ -56,8 +56,19 @@ function validToken(token) {
   return Number(exp) > Date.now() / 1000
 }
 
-const cookieHeader = (value, maxAge) =>
-  `${COOKIE}=${value}; Max-Age=${maxAge}; Path=/; HttpOnly; SameSite=Lax`
+// Behind Cloudflare the request reaches us over plain http from a private/loopback address.
+const isPrivate = (a) =>
+  a === '::1' || /^(::ffff:)?(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(a)
+const clientIp = (req) => {
+  const ra = req.socket.remoteAddress ?? 'unknown'
+  const cf = req.headers['cf-connecting-ip']
+  return isPrivate(ra) && typeof cf === 'string' && cf ? cf : ra
+}
+const isHttps = (req) =>
+  req.headers['x-forwarded-proto'] === 'https' || /"scheme":"https"/.test(String(req.headers['cf-visitor'] ?? ''))
+
+const cookieHeader = (value, maxAge, req) =>
+  `${COOKIE}=${value}; Max-Age=${maxAge}; Path=/; HttpOnly; SameSite=Lax${req && isHttps(req) ? '; Secure' : ''}`
 
 function getCookie(req) {
   const m = (req.headers.cookie ?? '').match(new RegExp(`(?:^|;\\s*)${COOKIE}=([^;]+)`))
@@ -147,7 +158,7 @@ async function serveFile(path) {
 }
 
 createServer(async (req, res) => {
-  const ip = req.socket.remoteAddress ?? 'unknown'
+  const ip = clientIp(req)
   const url = new URL(req.url ?? '/', 'http://x')
   const send = (p) => {
     res.writeHead(p.status, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', ...p.headers })
@@ -157,7 +168,7 @@ createServer(async (req, res) => {
   if (!(PASSWORD || HASH) || !SECRET) return send(page(setupHtml, 503))
 
   if (url.pathname === '/logout') {
-    return send(page('', 302, { location: '/login', 'set-cookie': cookieHeader('', 0) }))
+    return send(page('', 302, { location: '/login', 'set-cookie': cookieHeader('', 0, req) }))
   }
 
   if (url.pathname === '/login') {
@@ -166,7 +177,7 @@ createServer(async (req, res) => {
       const pw = new URLSearchParams(await readBody(req)).get('password') ?? ''
       if (verifyPassword(pw)) {
         fails.delete(ip)
-        return send(page('', 303, { location: '/', 'set-cookie': cookieHeader(makeToken(), MAX_AGE) }))
+        return send(page('', 303, { location: '/', 'set-cookie': cookieHeader(makeToken(), MAX_AGE, req) }))
       }
       recordFail(ip)
       return send(page(loginHtml('Wrong password.'), 401))
@@ -198,7 +209,7 @@ createServer(async (req, res) => {
     'cache-control': /\/assets\//.test(rel) ? 'public, max-age=31536000, immutable' : 'no-cache',
   }
   // sliding session: every page view renews the 100 days
-  if (authed && (isShell || rel === '/' || rel.endsWith('.html'))) headers['set-cookie'] = cookieHeader(makeToken(), MAX_AGE)
+  if (authed && (isShell || rel === '/' || rel.endsWith('.html'))) headers['set-cookie'] = cookieHeader(makeToken(), MAX_AGE, req)
   const z = encode(req, file)
   headers.vary = 'Accept-Encoding'
   if (z) headers['content-encoding'] = z.enc
