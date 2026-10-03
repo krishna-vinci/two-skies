@@ -2,6 +2,7 @@
 // Env: TS_PASSWORD (plain) or TS_PASSWORD_HASH (scrypt$salt$hash), TS_COOKIE_SECRET, PORT, HOST
 import { createServer } from 'node:http'
 import { createHmac, scryptSync, timingSafeEqual } from 'node:crypto'
+import { brotliCompressSync, gzipSync, constants as zc } from 'node:zlib'
 import { readFile, stat } from 'node:fs/promises'
 import { extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -76,6 +77,26 @@ function recordFail(ip) {
   fails.set(ip, f)
 }
 
+// Compressed bodies are cached in memory; the build is immutable until restart.
+const COMPRESSIBLE = /^(text\/|application\/(json|manifest\+json)|image\/svg)/
+const zcache = new Map()
+function encode(req, file) {
+  if (!COMPRESSIBLE.test(file.type) || file.buf.length < 512) return null
+  const ae = req.headers['accept-encoding'] ?? ''
+  const enc = /\bbr\b/.test(ae) ? 'br' : /\bgzip\b/.test(ae) ? 'gzip' : null
+  if (!enc) return null
+  const key = `${file.path}|${enc}`
+  let buf = zcache.get(key)
+  if (!buf) {
+    buf =
+      enc === 'br'
+        ? brotliCompressSync(file.buf, { params: { [zc.BROTLI_PARAM_QUALITY]: 9 } })
+        : gzipSync(file.buf, { level: 9 })
+    zcache.set(key, buf)
+  }
+  return { enc, buf }
+}
+
 const page = (body, status = 200, headers = {}) => ({ body, status, headers })
 
 const loginHtml = (msg = '') => `<!doctype html><html lang="en"><head><meta charset="utf-8">
@@ -119,7 +140,7 @@ async function serveFile(path) {
   try {
     const st = await stat(path)
     if (!st.isFile()) return null
-    return { buf: await readFile(path), type: MIME[extname(path)] ?? 'application/octet-stream' }
+    return { path, buf: await readFile(path), type: MIME[extname(path)] ?? 'application/octet-stream' }
   } catch {
     return null
   }
@@ -178,6 +199,11 @@ createServer(async (req, res) => {
   }
   // sliding session: every page view renews the 100 days
   if (authed && (isShell || rel === '/' || rel.endsWith('.html'))) headers['set-cookie'] = cookieHeader(makeToken(), MAX_AGE)
+  const z = encode(req, file)
+  headers.vary = 'Accept-Encoding'
+  if (z) headers['content-encoding'] = z.enc
+  const body = z ? z.buf : file.buf
+  headers['content-length'] = body.length
   res.writeHead(200, headers)
-  res.end(file.buf)
+  res.end(body)
 }).listen(PORT, HOST, () => console.log(`two-skies listening on ${HOST}:${PORT}`))
