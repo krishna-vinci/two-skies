@@ -4,6 +4,7 @@ export interface Place {
   id: string
   name: string
   nameLocal?: string
+  nameTh?: string
   subtitle?: string
   lat: number
   lon: number
@@ -28,6 +29,8 @@ export interface Weather {
     windDir: number
     uv: number
   }
+  /** 15-minute precipitation (mm per slot); absent in older cached data */
+  minutely?: { time: number; precip: number }[]
   hourly: { time: number; temp: number; precipProb: number; code: number; isDay: boolean }[]
   daily: {
     date: number
@@ -38,6 +41,7 @@ export interface Weather {
     sunset: number
     precipProbMax: number
     uvMax: number
+    apparentMax?: number
   }[]
   air: { usAqi: number | null; pm25: number | null; pm10: number | null } | null
 }

@@ -6,6 +6,8 @@ import { brotliCompressSync, gzipSync, constants as zc } from 'node:zlib'
 import { readFile, stat } from 'node:fs/promises'
 import { extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { homedir } from 'node:os'
+import { createPush } from './push.mjs'
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)), 'dist')
 const PORT = Number(process.env.PORT ?? 47318)
@@ -13,9 +15,12 @@ const HOST = process.env.HOST ?? '0.0.0.0'
 const PASSWORD = process.env.TS_PASSWORD ?? ''
 const HASH = process.env.TS_PASSWORD_HASH ?? ''
 const SECRET = process.env.TS_COOKIE_SECRET ?? ''
+const DATA_DIR = process.env.DATA_DIR ?? join(homedir(), '.local', 'state', 'two-skies')
+const push = createPush({ dataDir: DATA_DIR })
+await push.init()
 const COOKIE = 'ts_session'
 const MAX_AGE = 100 * 24 * 60 * 60 // 100 days, seconds
-const PUBLIC = new Set(['/manifest.webmanifest', '/icon.svg'])
+const PUBLIC = new Set(['/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png'])
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -142,7 +147,7 @@ async function readBody(req) {
   let data = ''
   for await (const c of req) {
     data += c
-    if (data.length > 4096) break
+    if (data.length > 16384) break
   }
   return data
 }
@@ -195,6 +200,20 @@ createServer(async (req, res) => {
     return
   }
 
+  if (url.pathname.startsWith('/api/')) {
+    if (url.pathname.startsWith('/api/push/')) {
+      try {
+        return await push.handleApi(req, res, url, readBody)
+      } catch (e) {
+        console.error('push api error', e)
+        res.writeHead(500, { 'content-type': 'application/json' }).end('{"error":"server"}')
+        return
+      }
+    }
+    res.writeHead(404, { 'content-type': 'application/json' }).end('{"error":"not found"}')
+    return
+  }
+
   let rel = normalize(decodeURIComponent(url.pathname)).replace(/^(\.\.[/\\])+/, '')
   const target = join(ROOT, rel === '/' ? 'index.html' : rel)
   let file = target.startsWith(ROOT) ? await serveFile(target) : null
@@ -218,3 +237,8 @@ createServer(async (req, res) => {
   res.writeHead(200, headers)
   res.end(body)
 }).listen(PORT, HOST, () => console.log(`two-skies listening on ${HOST}:${PORT}`))
+
+// alert scheduler: first pass shortly after boot, then every 10 minutes
+const runTick = () => push.tick().catch((e) => console.error('push tick failed', e?.message ?? e))
+setTimeout(runTick, 30_000)
+setInterval(runTick, 10 * 60_000)

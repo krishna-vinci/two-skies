@@ -7,6 +7,9 @@ Private weather PWA (Open-Meteo): Kothagudem/Hyderabad + Khon Kaen/Bangkok.
 - Password + cookie secret live in `~/.config/two-skies/env` (mode 600): `TS_PASSWORD`, `TS_COOKIE_SECRET`.
   Login lasts 100 days (renewed on each visit). Change password: edit the file, `systemctl --user restart two-skies`.
 - After code changes: `npm run build && systemctl --user restart two-skies`.
+- Push state (VAPID keys + subscriptions) lives in `~/.local/state/two-skies/push.json` (mode 600). Back it up if you care; deleting it just means re-enabling notifications on each device.
+- Shared rules/messages used by both UI and server: `shared/` (rain nowcast, air/heat alerts, EN/TH text).
+- Language: EN/ไทย toggle at the seam; notifications follow the language chosen when subscribing.
 - Debug sky: `?debug=1` (sliders), `?debug=1&open=him|her` (opens detail).
 
 ## Deployments

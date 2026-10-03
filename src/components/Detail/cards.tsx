@@ -1,7 +1,10 @@
 import { motion } from 'motion/react'
 import type { ReactNode } from 'react'
-import { WeatherIcon } from '../icons'
-import { aqiCategory, uvLabel } from '../../lib/labels'
+import { alertText, nowcastText } from '../../../shared/messages.js'
+import { AlertIcon, Drop, WeatherIcon } from '../icons'
+import { aqiCategory, uvKey } from '../../lib/labels'
+import { DIR_KEYS, localeFor, useI18n } from '../../lib/i18n'
+import { useInsights } from '../../lib/useInsights'
 import type { Place, Weather } from '../../lib/types'
 import { describeWeather } from '../../lib/weatherCodes'
 
@@ -19,15 +22,51 @@ export function Card({ title, children, className = '' }: { title: string; child
   )
 }
 
-const fmt = (tz: string, opts: Intl.DateTimeFormatOptions, t: number) =>
-  new Intl.DateTimeFormat('en-GB', { timeZone: tz, ...opts }).format(t)
+const fmt = (tz: string, opts: Intl.DateTimeFormatOptions, t: number, locale = 'en-GB') =>
+  new Intl.DateTimeFormat(locale, { timeZone: tz, ...opts }).format(t)
+
+export function HeadsUp({ w, nowMs }: { w: Weather; nowMs: number }) {
+  const { t, lang } = useI18n()
+  const ins = useInsights(w, nowMs)
+  if (!ins) return null
+  const rain = ins.nc.kind !== 'unknown' ? nowcastText(ins.nc, lang) : ''
+  if (!ins.alerts.length && !rain) return null
+  return (
+    <Card title={t('headsUp')} className="md:col-span-2">
+      <ul className="space-y-3">
+        {rain && (
+          <li className="flex items-start gap-3">
+            <span className="mt-0.5 text-sky-200"><Drop size={18} /></span>
+            <div>
+              <div className="text-[15px]">{rain}</div>
+              <div className="text-xs text-white/55">{t('rainOutlook')}</div>
+            </div>
+          </li>
+        )}
+        {ins.alerts.map((a) => {
+          const txt = alertText(a, lang)
+          return (
+            <li key={a.id} className="flex items-start gap-3">
+              <span className={`mt-0.5 ${a.level >= 2 ? 'text-rose-300' : 'text-amber-200'}`}><AlertIcon size={18} /></span>
+              <div>
+                <div className="text-[15px]">{txt.title}</div>
+                <div className="text-sm font-light text-white/70">{txt.body}</div>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </Card>
+  )
+}
 
 export function Hourly({ place, w, now }: { place: Place; w: Weather; now: number }) {
+  const { t } = useI18n()
   let start = w.hourly.findIndex((h) => h.time + 3600_000 > now)
   if (start < 0) start = 0
   const hours = w.hourly.slice(start, start + 24)
   return (
-    <Card title="Next 24 hours" className="md:col-span-2">
+    <Card title={t('next24')} className="md:col-span-2">
       <div className="no-scrollbar -mx-2 flex snap-x gap-1 overflow-x-auto px-2 pb-1">
         {hours.map((h, i) => {
           const d = describeWeather(h.code)
@@ -37,7 +76,7 @@ export function Hourly({ place, w, now }: { place: Place; w: Weather; now: numbe
               className={`flex w-[62px] shrink-0 snap-start flex-col items-center gap-2 rounded-2xl py-3 ${i === 0 ? 'bg-white/15' : ''}`}
             >
               <span className="text-xs font-light text-white/75">
-                {i === 0 ? 'Now' : fmt(place.tz, { hour: '2-digit', hour12: false }, h.time)}
+                {i === 0 ? t('now') : fmt(place.tz, { hour: '2-digit', hour12: false }, h.time)}
               </span>
               <WeatherIcon kind={d.kind} isDay={h.isDay} size={24} />
               <span className="text-[17px] font-light tabular-nums">{Math.round(h.temp)}°</span>
@@ -54,11 +93,12 @@ export function Hourly({ place, w, now }: { place: Place; w: Weather; now: numbe
 }
 
 export function Daily({ place, w }: { place: Place; w: Weather }) {
+  const { t, lang } = useI18n()
   const min = Math.min(...w.daily.map((d) => d.tMin))
   const max = Math.max(...w.daily.map((d) => d.tMax))
   const span = Math.max(1, max - min)
   return (
-    <Card title="7-day forecast">
+    <Card title={t('sevenDay')}>
       <ul className="space-y-1">
         {w.daily.map((d, i) => {
           const desc = describeWeather(d.code)
@@ -66,8 +106,8 @@ export function Daily({ place, w }: { place: Place; w: Weather }) {
           const width = ((d.tMax - d.tMin) / span) * 100
           return (
             <li key={d.date} className="flex items-center gap-3 py-1.5 text-[15px] font-light">
-              <span className="w-11 text-white/85">
-                {i === 0 ? 'Today' : fmt(place.tz, { weekday: 'short' }, d.date + 12 * 3600_000)}
+              <span className="w-14 text-white/85">
+                {i === 0 ? t('today') : fmt(place.tz, { weekday: 'short' }, d.date + 12 * 3600_000, localeFor(lang))}
               </span>
               <WeatherIcon kind={desc.kind} size={22} />
               <span className="w-9 text-right text-xs text-sky-200/80">{d.precipProbMax > 15 ? `${d.precipProbMax}%` : ''}</span>
@@ -88,6 +128,7 @@ export function Daily({ place, w }: { place: Place; w: Weather }) {
 }
 
 export function SunArc({ place, w, now }: { place: Place; w: Weather; now: number }) {
+  const { t } = useI18n()
   const d = w.daily[0]
   const raw = (now - d.sunrise) / (d.sunset - d.sunrise)
   const isDay = raw >= 0 && raw <= 1
@@ -97,7 +138,7 @@ export function SunArc({ place, w, now }: { place: Place; w: Weather; now: numbe
   const y = 140 - 120 * Math.sin(ang)
   const mins = Math.round((d.sunset - d.sunrise) / 60_000)
   return (
-    <Card title="Sun">
+    <Card title={t('sun')}>
       <svg viewBox="0 0 300 168" className="w-full">
         <defs>
           <linearGradient id="arc" x1="0" x2="1">
@@ -120,19 +161,18 @@ export function SunArc({ place, w, now }: { place: Place; w: Weather; now: numbe
         <text x="30" y="160" textAnchor="middle" fontSize="12" fill="rgba(255,255,255,0.8)">{fmt(place.tz, { hour: '2-digit', minute: '2-digit', hour12: false }, d.sunrise)}</text>
         <text x="270" y="160" textAnchor="middle" fontSize="12" fill="rgba(255,255,255,0.8)">{fmt(place.tz, { hour: '2-digit', minute: '2-digit', hour12: false }, d.sunset)}</text>
         <text x="150" y="112" textAnchor="middle" fontSize="22" fontWeight="200" fill="#fff">{Math.floor(mins / 60)}h {mins % 60}m</text>
-        <text x="150" y="130" textAnchor="middle" fontSize="10" letterSpacing="2" fill="rgba(255,255,255,0.55)">DAYLIGHT</text>
+        <text x="150" y="130" textAnchor="middle" fontSize="10" letterSpacing="2" fill="rgba(255,255,255,0.55)">{t('daylight')}</text>
       </svg>
     </Card>
   )
 }
 
-const DIRS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']
-
 export function WindCompass({ w }: { w: Weather }) {
+  const { t } = useI18n()
   const { windDir, windSpeed } = w.current
-  const label = DIRS[Math.round(windDir / 22.5) % 16]
+  const label = t(DIR_KEYS[Math.round(windDir / 45) % 8])
   return (
-    <Card title="Wind">
+    <Card title={t('wind')}>
       <div className="flex items-center gap-5">
         <svg viewBox="0 0 160 160" className="w-36 shrink-0">
           <circle cx="80" cy="80" r="66" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />
@@ -152,7 +192,7 @@ export function WindCompass({ w }: { w: Weather }) {
         </svg>
         <div>
           <div className="text-4xl font-extralight tabular-nums">{Math.round(windSpeed)}</div>
-          <div className="text-xs text-white/65">km/h from {label}</div>
+          <div className="text-xs text-white/65">{t('windFrom', { dir: label })}</div>
         </div>
       </div>
     </Card>
@@ -160,15 +200,16 @@ export function WindCompass({ w }: { w: Weather }) {
 }
 
 export function AqiCard({ w }: { w: Weather }) {
+  const { t } = useI18n()
   const air = w.air
   if (!air || air.usAqi === null) return null
   const cat = aqiCategory(air.usAqi)
   const pos = Math.min(300, air.usAqi) / 3
   return (
-    <Card title="Air quality">
+    <Card title={t('air')}>
       <div className="flex items-baseline gap-3">
         <span className="text-5xl font-extralight tabular-nums">{Math.round(air.usAqi)}</span>
-        <span className="text-sm font-light" style={{ color: cat.color }}>{cat.label}</span>
+        <span className="text-sm font-light" style={{ color: cat.color }}>{t(cat.key)}</span>
       </div>
       <div className="relative mt-4 h-1.5 rounded-full" style={{ background: 'linear-gradient(90deg,#4ade80 0%,#facc15 17%,#fb923c 33%,#f87171 50%,#c084fc 83%,#be123c 100%)' }}>
         <div className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-black/30" style={{ left: `${pos}%` }} />
@@ -182,16 +223,17 @@ export function AqiCard({ w }: { w: Weather }) {
 }
 
 export function Stats({ w }: { w: Weather }) {
+  const { t } = useI18n()
   const c = w.current
   const tiles: [string, string, string?][] = [
-    ['Feels like', `${Math.round(c.feelsLike)}°`],
-    ['Humidity', `${Math.round(c.humidity)}%`],
-    ['UV index', c.uv.toFixed(0), uvLabel(c.uv)],
-    ['Rain now', `${c.precip.toFixed(1)} mm`, `${w.daily[0].precipProbMax}% today`],
-    ['Cloud cover', `${Math.round(c.cloud)}%`],
+    [t('feelsLike'), `${Math.round(c.feelsLike)}°`],
+    [t('humidity'), `${Math.round(c.humidity)}%`],
+    [t('uvIndex'), c.uv.toFixed(0), t(uvKey(c.uv))],
+    [t('rainNow'), `${c.precip.toFixed(1)} mm`, t('pctToday', { n: w.daily[0].precipProbMax })],
+    [t('cloudCover'), `${Math.round(c.cloud)}%`],
   ]
   return (
-    <Card title="Conditions" className="md:col-span-2">
+    <Card title={t('conditions')} className="md:col-span-2">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {tiles.map(([k, v, sub]) => (
           <div key={k} className="rounded-2xl bg-white/8 p-3.5">

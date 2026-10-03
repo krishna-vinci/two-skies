@@ -23,9 +23,10 @@ export function useTween(value: number | undefined, duration = 1.1) {
   return shown
 }
 
-export function ago(ms: number, now: number): string {
+/** Minutes since `ms` as a translation key + vars (caller translates). */
+export function agoParts(ms: number, now: number): { key: 'justNow' | 'minAgo' | 'hourAgo'; n: number } {
   const m = Math.max(0, Math.round((now - ms) / 60_000))
-  if (m < 1) return 'just now'
-  if (m < 60) return `${m} min ago`
-  return `${Math.round(m / 60)} h ago`
+  if (m < 1) return { key: 'justNow', n: 0 }
+  if (m < 60) return { key: 'minAgo', n: m }
+  return { key: 'hourAgo', n: Math.round(m / 60) }
 }

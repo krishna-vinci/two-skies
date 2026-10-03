@@ -1,8 +1,11 @@
 import { AnimatePresence, motion } from 'motion/react'
+import { weatherLabel } from '../../shared/messages.js'
+import { AlertStrip } from './AlertStrip'
 import { SkyCanvas } from './SkyCanvas'
 import { Swap, WeatherIcon } from './icons'
 import { localTime } from '../lib/couple'
-import { ago, useNow, useTween } from '../lib/hooks'
+import { agoParts, useNow, useTween } from '../lib/hooks'
+import { placeLabels, useI18n } from '../lib/i18n'
 import type { Place } from '../lib/types'
 import { useWeather } from '../lib/useWeather'
 import { describeWeather } from '../lib/weatherCodes'
@@ -19,20 +22,23 @@ interface Props {
 }
 
 export function SkyPanel({ place, index, nextName, override, onOpen, onSwitch }: Props) {
+  const { t, lang } = useI18n()
   const q = useWeather(place)
   const w = q.data
   const sky = useSky(place, w, override)
   const now = useNow(30_000)
   const temp = useTween(w?.current.temp)
-  const desc = w ? describeWeather(w.current.code) : null
+  const kind = w ? describeWeather(w.current.code).kind : null
   const today = w?.daily[0]
   const stale = q.isError || (w && now.getTime() - q.dataUpdatedAt > 25 * 60_000)
+  const labels = placeLabels(place, lang)
+  const ago = agoParts(q.dataUpdatedAt, now.getTime())
 
   return (
     <motion.section
       role="button"
       tabIndex={0}
-      aria-label={`${place.name} weather`}
+      aria-label={`${labels.title} weather`}
       onClick={(e) => onOpen(e.currentTarget.getBoundingClientRect())}
       onKeyDown={(e) => {
         if (e.key === 'Enter') onOpen(e.currentTarget.getBoundingClientRect())
@@ -46,31 +52,32 @@ export function SkyPanel({ place, index, nextName, override, onOpen, onSwitch }:
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/10" />
 
       <div className="relative z-10 flex h-full flex-col justify-between p-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-6 md:p-9">
-        <div className="flex items-start justify-between gap-4">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={place.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.3 }}
-              className="text-soft-shadow"
-            >
-              <h2 className="text-[28px] font-light leading-none tracking-tight md:text-4xl">{place.name}</h2>
-              <p className="mt-1.5 text-[15px] font-light text-white/80">
-                {place.nameLocal ?? place.subtitle ?? ' '}
-              </p>
-            </motion.div>
-          </AnimatePresence>
-          <div className="text-soft-shadow text-right">
-            <div className="text-[28px] font-extralight tabular-nums leading-none md:text-4xl">{localTime(now, place)}</div>
-            <div className="mt-1.5 text-[11px] uppercase tracking-[0.18em] text-white/70">local time</div>
+        <div>
+          <div className="flex items-start justify-between gap-4">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={place.id + lang}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.3 }}
+                className="text-soft-shadow min-w-0"
+              >
+                <h2 className="truncate text-[28px] font-light leading-tight tracking-tight md:text-4xl">{labels.title}</h2>
+                <p className="mt-1 text-[15px] font-light leading-tight text-white/80">{labels.sub || ' '}</p>
+              </motion.div>
+            </AnimatePresence>
+            <div className="text-soft-shadow shrink-0 text-right">
+              <div className="text-[28px] font-extralight tabular-nums leading-none md:text-4xl">{localTime(now, place)}</div>
+              <div className="mt-1.5 text-[11px] uppercase tracking-[0.18em] text-white/70">{t('localTime')}</div>
+            </div>
           </div>
+          <AlertStrip w={w} nowMs={now.getTime()} />
         </div>
 
         <div className="flex items-end justify-between gap-3">
           <div className="text-soft-shadow min-w-0">
-            {w ? (
+            {w && kind ? (
               <>
                 <div
                   className="font-extralight leading-[0.9] tracking-[-0.05em] tabular-nums"
@@ -80,17 +87,17 @@ export function SkyPanel({ place, index, nextName, override, onOpen, onSwitch }:
                   <span className="align-top text-[0.4em] font-light tracking-normal opacity-80">°</span>
                 </div>
                 <div className="mt-2 flex items-center gap-2 text-[17px] font-light">
-                  <WeatherIcon kind={desc!.kind} isDay={w.current.isDay} size={22} />
-                  {desc!.label}
+                  <WeatherIcon kind={kind} isDay={w.current.isDay} size={22} />
+                  {weatherLabel(w.current.code, lang)}
                 </div>
                 <div className="mt-1 text-sm font-light text-white/75">
-                  Feels {Math.round(w.current.feelsLike)}° · H {Math.round(today!.tMax)}° L {Math.round(today!.tMin)}°
+                  {t('feels')} {Math.round(w.current.feelsLike)}° · {t('high')} {Math.round(today!.tMax)}° {t('low')} {Math.round(today!.tMin)}°
                 </div>
-                {stale && <div className="mt-1 text-xs text-white/60">updated {ago(q.dataUpdatedAt, now.getTime())}</div>}
+                {stale && <div className="mt-1 text-xs text-white/60">{t('updated', { when: t(ago.key, { n: ago.n }) })}</div>}
               </>
             ) : q.isError ? (
               <div className="text-sm text-white/80">
-                Can't reach the weather service.
+                {t('unreachable')}
                 <button
                   className="ml-2 underline"
                   onClick={(e) => {
@@ -98,7 +105,7 @@ export function SkyPanel({ place, index, nextName, override, onOpen, onSwitch }:
                     q.refetch()
                   }}
                 >
-                  Retry
+                  {t('retry')}
                 </button>
               </div>
             ) : (
@@ -110,7 +117,7 @@ export function SkyPanel({ place, index, nextName, override, onOpen, onSwitch }:
           </div>
 
           <button
-            aria-label="Switch place"
+            aria-label={t('switchPlace')}
             onClick={(e) => {
               e.stopPropagation()
               onSwitch()

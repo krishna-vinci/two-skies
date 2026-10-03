@@ -17,6 +17,7 @@ const forecast = {
     wind_direction_10m: 250,
     uv_index: 8.1,
   },
+  minutely_15: { time: ['2026-10-03T12:00', '2026-10-03T12:15'], precipitation: [0, 0.4] },
   hourly: {
     time: ['2026-10-03T12:00', '2026-10-03T13:00'],
     temperature_2m: [31.4, 32],
@@ -29,6 +30,7 @@ const forecast = {
     weather_code: [3],
     temperature_2m_max: [33],
     temperature_2m_min: [24],
+    apparent_temperature_max: [39.5],
     sunrise: ['2026-10-03T06:02'],
     sunset: ['2026-10-03T17:55'],
     precipitation_probability_max: [40],
@@ -46,9 +48,17 @@ test('normalize converts local times using utc offset', () => {
   expect(w.hourly[1]).toMatchObject({ temp: 32, precipProb: 20, code: 3 })
   expect(w.daily[0].sunrise).toBe(Date.parse('2026-10-03T00:32:00Z'))
   expect(w.air).toEqual({ usAqi: 88, pm25: 30.2, pm10: 55 })
+  expect(w.minutely).toEqual([
+    { time: Date.parse('2026-10-03T06:30:00Z'), precip: 0 },
+    { time: Date.parse('2026-10-03T06:45:00Z'), precip: 0.4 },
+  ])
+  expect(w.daily[0].apparentMax).toBe(39.5)
 })
 test('normalize tolerates missing air', () => {
   expect(normalize(forecast, null, 1).air).toBeNull()
+})
+test('forecast url asks for 15-minute rain', () => {
+  expect(buildForecastUrl(placeById('khonkaen'))).toContain('minutely_15=precipitation')
 })
 test('urls carry coordinates and timezone=auto', () => {
   const p = placeById('khonkaen')

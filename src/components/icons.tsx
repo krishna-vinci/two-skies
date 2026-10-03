@@ -99,3 +99,32 @@ export const Chevron = ({ size = 20 }: { size?: number }) => (
     <path d="M15 5l-7 7 7 7" />
   </svg>
 )
+
+const stroke = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+
+export const Drop = ({ size = 14 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke}>
+    <path d="M12 3.5s6 6.2 6 10.5a6 6 0 0 1-12 0c0-4.3 6-10.5 6-10.5z" />
+  </svg>
+)
+
+export const AlertIcon = ({ size = 14 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke}>
+    <path d="M12 4l9 16H3L12 4z" />
+    <path d="M12 10v4.5" />
+    <circle cx="12" cy="17.3" r="0.4" />
+  </svg>
+)
+
+export const Bell = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke}>
+    <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15L6 16z" />
+    <path d="M10 20.5a2 2 0 0 0 4 0" />
+  </svg>
+)
+
+export const Close = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke}>
+    <path d="M6 6l12 12M18 6L6 18" />
+  </svg>
+)

@@ -8,11 +8,12 @@ const CURRENT =
   'temperature_2m,apparent_temperature,relative_humidity_2m,is_day,precipitation,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,uv_index'
 const HOURLY = 'temperature_2m,precipitation_probability,weather_code,is_day'
 const DAILY =
-  'weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max,uv_index_max'
+  'weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,sunrise,sunset,precipitation_probability_max,uv_index_max'
 
 export const buildForecastUrl = (p: Place) =>
   `https://api.open-meteo.com/v1/forecast?latitude=${p.lat}&longitude=${p.lon}` +
   `&current=${CURRENT}&hourly=${HOURLY}&daily=${DAILY}` +
+  `&minutely_15=precipitation&forecast_minutely_15=8` +
   `&timezone=auto&forecast_days=7&wind_speed_unit=kmh`
 
 export const buildAirUrl = (p: Place) =>
@@ -41,6 +42,10 @@ export function normalize(f: RawForecast, a: RawAir | null, now = Date.now()): W
       windDir: c.wind_direction_10m,
       uv: c.uv_index,
     },
+    minutely: f.minutely_15?.time?.map((s: string, i: number) => ({
+      time: t(s),
+      precip: f.minutely_15.precipitation[i] ?? 0,
+    })),
     hourly: h.time.map((s: string, i: number) => ({
       time: t(s),
       temp: h.temperature_2m[i],
@@ -57,6 +62,7 @@ export function normalize(f: RawForecast, a: RawAir | null, now = Date.now()): W
       sunset: t(d.sunset[i]),
       precipProbMax: d.precipitation_probability_max[i] ?? 0,
       uvMax: d.uv_index_max[i] ?? 0,
+      apparentMax: d.apparent_temperature_max?.[i],
     })),
     air: a?.current
       ? { usAqi: a.current.us_aqi ?? null, pm25: a.current.pm2_5 ?? null, pm10: a.current.pm10 ?? null }

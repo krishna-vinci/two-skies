@@ -2,13 +2,14 @@ import type { Place } from './types'
 
 export const timeDiffMin = (a: Place, b: Place) => b.utcOffsetMin - a.utcOffsetMin
 
-export function formatDiff(min: number): string {
+export function formatDiff(min: number, lang: 'en' | 'th' = 'en'): string {
   const m = Math.abs(min)
   const h = Math.floor(m / 60)
   const r = m % 60
-  if (h && r) return `${h}h ${r}m`
-  if (h) return `${h}h`
-  return `${r}m`
+  const [H, M] = lang === 'th' ? [' ชม.', ' น.'] : ['h', 'm']
+  if (h && r) return `${h}${H} ${r}${M}`
+  if (h) return `${h}${H}`
+  return `${r}${M}`
 }
 
 export function tempGap(mine: number, theirs: number) {
