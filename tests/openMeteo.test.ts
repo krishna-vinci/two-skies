@@ -1,5 +1,6 @@
 import { expect, test } from 'vitest'
-import { normalize, buildForecastUrl, buildAirUrl } from '../src/lib/openMeteo'
+import { normalize, buildForecastUrl, buildAirUrl, buildEnsembleUrl } from '../src/lib/openMeteo'
+import { ensembleRainProb } from '../shared/rules.js'
 import { placeById } from '../src/lib/places'
 
 const forecast = {
@@ -16,6 +17,7 @@ const forecast = {
     wind_speed_10m: 11.2,
     wind_direction_10m: 250,
     uv_index: 8.1,
+    wet_bulb_temperature_2m: 25.5,
   },
   minutely_15: { time: ['2026-10-03T12:00', '2026-10-03T12:15'], precipitation: [0, 0.4] },
   hourly: {
@@ -24,6 +26,9 @@ const forecast = {
     precipitation_probability: [10, 20],
     weather_code: [2, 3],
     is_day: [1, 1],
+    cape: [1700, 2800],
+    lifted_index: [-4.7, -5.5],
+    wet_bulb_temperature_2m: [25.5, 26],
   },
   daily: {
     time: ['2026-10-03'],
@@ -65,4 +70,31 @@ test('urls carry coordinates and timezone=auto', () => {
   expect(buildForecastUrl(p)).toContain('latitude=16.44')
   expect(buildForecastUrl(p)).toContain('timezone=auto')
   expect(buildAirUrl(p)).toContain('air-quality-api.open-meteo.com')
+})
+
+test('normalize carries cape, lifted index, wet bulb and rain probability', () => {
+  const rp = [{ time: 1, p: 0.5 }]
+  const w = normalize(forecast, air, 1, rp)
+  expect(w.current.wetBulb).toBe(25.5)
+  expect(w.hourly[1]).toMatchObject({ cape: 2800, liftedIndex: -5.5, wetBulb: 26 })
+  expect(w.rainProb).toEqual(rp)
+  expect(normalize(forecast, air, 1).rainProb).toBeUndefined()
+})
+
+test('ensemble parse: share of wet members per hour, ignoring nulls', () => {
+  const j = {
+    utc_offset_seconds: 25200,
+    hourly: {
+      time: ['2026-10-03T12:00', '2026-10-03T13:00'],
+      precipitation: [0, 1],
+      precipitation_member01: [0.5, 0],
+      precipitation_member02: [0.1, null],
+      precipitation_member03: [2, 0.3],
+    },
+  }
+  const r = ensembleRainProb(j)
+  expect(r[0]).toEqual({ time: Date.parse('2026-10-03T05:00:00Z'), p: 0.5 }) // 2 of 4 >= 0.2
+  expect(r[1].p).toBeCloseTo(2 / 3) // 2 of 3 non-null
+  expect(ensembleRainProb(undefined)).toEqual([])
+  expect(buildEnsembleUrl({ lat: 1, lon: 2 } as never)).toContain('ecmwf_ifs025')
 })

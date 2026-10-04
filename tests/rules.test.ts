@@ -58,3 +58,54 @@ test('messages: en and th render, level clamps', () => {
   expect(weatherLabel(63, 'th')).toBe('ฝนตก')
   expect(morningText({ placeName: 'Khon Kaen', temp: 28, code: 2, hi: 33, lo: 24, rainPct: 40 }, 'en').body).toContain('Partly cloudy')
 })
+
+import { hourlyChanged, hourlyDigest, kindOfCode, rainChance } from '../shared/rules.js'
+import { hourlyText, rainChanceText } from '../shared/messages.js'
+
+test('alerts: unstable air gives a level-1 storm risk; imminent storm stays level 2', () => {
+  const unstable = [{ time: T0 + 3600_000, code: 3, cape: 3100, liftedIndex: -6 }]
+  expect(alertsFor({ ...base, hourly: unstable })[0]).toMatchObject({ id: 'storm', level: 1 })
+  const tame = [{ time: T0 + 3600_000, code: 3, cape: 1700, liftedIndex: -4.7 }]
+  expect(alertsFor({ ...base, hourly: tame }).some((a) => a.id === 'storm')).toBe(false)
+  expect(alertsFor({ ...base, hourly: [{ time: T0 + 3600_000, code: 95, cape: 3100, liftedIndex: -6 }] })[0]).toMatchObject({ id: 'storm', level: 2 })
+})
+
+test('alerts: wet-bulb humid heat levels, looking 6 h ahead', () => {
+  expect(alertsFor({ ...base, current: { ...base.current, wetBulb: 27 } }).find((a) => a.id === 'humid')).toMatchObject({ level: 1, value: 27 })
+  expect(alertsFor({ ...base, current: { ...base.current, wetBulb: 29 } }).find((a) => a.id === 'humid')?.level).toBe(2)
+  const later = [{ time: T0 + 5 * 3600_000, code: 1, wetBulb: 30.5 }]
+  expect(alertsFor({ ...base, hourly: later }).find((a) => a.id === 'humid')?.level).toBe(3)
+  expect(alertsFor({ ...base, current: { ...base.current, wetBulb: 24.6 } }).some((a) => a.id === 'humid')).toBe(false)
+})
+
+test('rainChance: highest member share in the next 3 h', () => {
+  const rp = [{ time: T0, p: 0.1 }, { time: T0 + 3600_000, p: 0.7 }, { time: T0 + 2 * 3600_000, p: 0.4 }, { time: T0 + 5 * 3600_000, p: 1 }]
+  expect(rainChance(rp, T0 + 600_000)).toEqual({ time: T0 + 3600_000, p: 0.7 })
+  expect(rainChance([], T0)).toBeNull()
+  expect(rainChance(undefined, T0)).toBeNull()
+})
+
+test('kindOfCode groups WMO codes', () => {
+  expect([0, 2, 3, 45, 53, 63, 81, 73, 95].map(kindOfCode)).toEqual(['clear', 'partly', 'cloudy', 'fog', 'drizzle', 'rain', 'rain', 'snow', 'thunder'])
+})
+
+test('hourlyChanged: only meaningful changes trigger a send', () => {
+  const mk = (o: object = {}) => hourlyDigest({ temp: 30, code: 2, alerts: [], rainP: 0.1, ...o })
+  const prev = mk()
+  expect(hourlyChanged(undefined, prev)).toBe(true)
+  expect(hourlyChanged(prev, mk({ temp: 31.5 }))).toBe(false)
+  expect(hourlyChanged(prev, mk({ temp: 33 }))).toBe(true)
+  expect(hourlyChanged(prev, mk({ code: 63 }))).toBe(true)
+  expect(hourlyChanged(prev, mk({ rainP: 0.7 }))).toBe(true)
+  expect(hourlyChanged(prev, mk({ alerts: [{ id: 'aqi', level: 2, value: 160 }] }))).toBe(true)
+  expect(hourlyChanged(mk({ alerts: [{ id: 'aqi', level: 2, value: 160 }] }), mk({ alerts: [{ id: 'aqi', level: 2, value: 175 }] }))).toBe(false)
+})
+
+test('hourly text composes label, feels-like, rain chance and alert', () => {
+  const rc = { p: 0.65, time: Date.parse('2026-10-03T08:00:00Z') }
+  const t = hourlyText({ placeName: 'Khon Kaen', temp: 31, feels: 37, code: 2, rainRc: rc, offMin: 420, alertTitle: 'Extreme heat' }, 'en')
+  expect(t.title).toBe('Khon Kaen · 31°')
+  expect(t.body).toBe('Partly cloudy · feels 37° · 65% chance of rain around 15:00 · Extreme heat')
+  expect(rainChanceText(rc, 420, 'th')).toBe('โอกาสฝน 65% ราว 15:00 น.')
+  expect(hourlyText({ placeName: 'X', temp: 20, feels: 20, code: 0, rainRc: { p: 0.1, time: 0 }, offMin: 0 }, 'en').body).toBe('Clear sky')
+})

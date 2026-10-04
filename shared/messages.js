@@ -22,7 +22,12 @@ const ALERTS = {
       () => ['Very high UV', 'Use sunscreen and find shade.'],
       () => ['Extreme UV', 'Avoid direct sun around midday.'],
     ],
-    storm: [() => ['Thunderstorm', 'Thunderstorm now or within 3 hours. Stay safe.'], () => ['Thunderstorm', 'Thunderstorm now or within 3 hours. Stay safe.']],
+    storm: [() => ['Storms possible', 'Unstable air. Thunderstorms may form in the next few hours.'], () => ['Thunderstorm', 'Thunderstorm now or within 3 hours. Stay safe.']],
+    humid: [
+      (v) => ['Humid heat', `Wet-bulb ${v}°. Take breaks in the shade and drink water.`],
+      (v) => ['Very humid heat', `Wet-bulb ${v}°. Your body cools poorly. Avoid hard activity outside.`],
+      (v) => ['Dangerous humid heat', `Wet-bulb ${v}°. Stay somewhere cool with airflow.`],
+    ],
     umbrella: [(v) => ['Carry an umbrella', `${v}% chance of rain today.`]],
   },
   th: {
@@ -40,7 +45,12 @@ const ALERTS = {
       () => ['รังสียูวีสูงมาก', 'ทาครีมกันแดดและหลบร่มเงา'],
       () => ['รังสียูวีรุนแรง', 'หลีกเลี่ยงแดดจัดช่วงเที่ยง'],
     ],
-    storm: [() => ['พายุฝนฟ้าคะนอง', 'มีพายุฝนฟ้าคะนองตอนนี้หรือภายใน 3 ชั่วโมง ระวังตัวด้วยนะ'], () => ['พายุฝนฟ้าคะนอง', 'มีพายุฝนฟ้าคะนองตอนนี้หรือภายใน 3 ชั่วโมง ระวังตัวด้วยนะ']],
+    storm: [() => ['อาจมีพายุ', 'อากาศไม่เสถียร อาจเกิดพายุฝนฟ้าคะนองในอีกไม่กี่ชั่วโมง'], () => ['พายุฝนฟ้าคะนอง', 'มีพายุฝนฟ้าคะนองตอนนี้หรือภายใน 3 ชั่วโมง ระวังตัวด้วยนะ']],
+    humid: [
+      (v) => ['ร้อนอบอ้าว', `อุณหภูมิกระเปาะเปียก ${v}° พักในร่มและดื่มน้ำบ่อยๆ`],
+      (v) => ['ร้อนชื้นมาก', `อุณหภูมิกระเปาะเปียก ${v}° ร่างกายระบายความร้อนได้ยาก หลีกเลี่ยงการออกแรงกลางแจ้ง`],
+      (v) => ['ร้อนชื้นอันตราย', `อุณหภูมิกระเปาะเปียก ${v}° อยู่ในที่เย็นและมีลมถ่ายเท`],
+    ],
     umbrella: [(v) => ['พกร่มไปด้วย', `โอกาสฝนตก ${v}% วันนี้`]],
   },
 }
@@ -99,3 +109,22 @@ export const testText = (lang) =>
   lang === 'th'
     ? { title: 'Two Skies', body: 'การแจ้งเตือนใช้งานได้แล้ว' }
     : { title: 'Two Skies', body: 'Notifications are working.' }
+
+const hh = (ms, offMin) => String(new Date(ms + offMin * 60_000).getUTCHours()).padStart(2, '0')
+
+/** "60% chance of rain around 15:00" */
+export function rainChanceText(rc, offMin, lang) {
+  const pct = Math.round(rc.p * 100)
+  const at = `${hh(rc.time, offMin)}:00`
+  return lang === 'th' ? `โอกาสฝน ${pct}% ราว ${at} น.` : `${pct}% chance of rain around ${at}`
+}
+
+/** Hourly update push. extras: optional first alert title. */
+export function hourlyText({ placeName, temp, feels, code, rainRc, offMin, alertTitle }, lang) {
+  const label = weatherLabel(code, lang)
+  const parts = [label]
+  if (Math.abs(feels - temp) >= 2) parts.push(lang === 'th' ? `รู้สึกเหมือน ${feels}°` : `feels ${feels}°`)
+  if (rainRc && rainRc.p >= 0.3) parts.push(rainChanceText(rainRc, offMin, lang))
+  if (alertTitle) parts.push(alertTitle)
+  return { title: `${placeName} · ${temp}°`, body: parts.join(' · ') }
+}

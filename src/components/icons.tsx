@@ -128,3 +128,10 @@ export const Close = ({ size = 18 }: { size?: number }) => (
     <path d="M6 6l12 12M18 6L6 18" />
   </svg>
 )
+
+export const Pin = ({ size = 14 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke}>
+    <path d="M12 21s-6.5-5.7-6.5-11a6.5 6.5 0 0 1 13 0c0 5.3-6.5 11-6.5 11z" />
+    <circle cx="12" cy="10" r="2.3" />
+  </svg>
+)

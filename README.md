@@ -11,6 +11,9 @@ Private weather PWA (Open-Meteo): Kothagudem/Hyderabad + Khon Kaen/Bangkok.
 - Shared rules/messages used by both UI and server: `shared/` (rain nowcast, air/heat alerts, EN/TH text).
 - Language: EN/ไทย toggle at the seam; notifications follow the language chosen when subscribing.
 - Pull down from the top (home or detail) to refresh; data also refreshes on app focus after 2 min and every 10 min.
+- Places: the pin button on each panel opens a list of our cities plus any city you search for (Open-Meteo geocoding, or add by coordinates). Added places are shared via `~/.local/state/two-skies/places.json` and are browse-only: push alerts only ever cover the four built-in cities.
+- Notifications: rain-soon, air/heat/UV/storm/humid-heat alerts, optional morning summary, and an optional hourly update (07:00–22:00 local) that replaces the previous one; a switch limits it to when something changed.
+- Open-Meteo capabilities we use or could use: `docs/open-meteo-capabilities.md`. Data is CC BY 4.0 (attribution is shown in the detail view).
 - Debug sky: `?debug=1` (sliders), `?debug=1&open=him|her` (opens detail).
 
 ## Deployments

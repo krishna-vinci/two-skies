@@ -3,8 +3,8 @@ import webpush from 'web-push'
 import { chmod, mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { PLACES } from '../shared/places.js'
-import { alertsFor, nowcast } from '../shared/rules.js'
-import { alertText, morningText, nowcastText, testText } from '../shared/messages.js'
+import { alertsFor, ensembleRainProb, hourlyChanged, hourlyDigest, nowcast, rainChance } from '../shared/rules.js'
+import { alertText, hourlyText, morningText, nowcastText, testText } from '../shared/messages.js'
 
 const MIN = 60_000
 const HOUR = 60 * MIN
@@ -21,13 +21,17 @@ const getJson = async (url) => {
 export async function fetchSnapshot(place, fetchJson = getJson) {
   const f = await fetchJson(
     `https://api.open-meteo.com/v1/forecast?latitude=${place.lat}&longitude=${place.lon}` +
-      `&current=temperature_2m,apparent_temperature,is_day,weather_code,uv_index` +
-      `&hourly=weather_code&forecast_hours=6` +
+      `&current=temperature_2m,apparent_temperature,is_day,weather_code,uv_index,wet_bulb_temperature_2m` +
+      `&hourly=weather_code,cape,lifted_index,wet_bulb_temperature_2m&forecast_hours=6` +
       `&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,precipitation_probability_max,uv_index_max` +
       `&minutely_15=precipitation&forecast_minutely_15=8&timezone=auto&forecast_days=1`,
   )
   const air = await fetchJson(
     `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${place.lat}&longitude=${place.lon}&current=us_aqi&timezone=auto`,
+  ).catch(() => null)
+  const ens = await fetchJson(
+    `https://ensemble-api.open-meteo.com/v1/ensemble?latitude=${place.lat}&longitude=${place.lon}` +
+      `&hourly=precipitation&models=ecmwf_ifs025&forecast_hours=6&timezone=auto`,
   ).catch(() => null)
   const off = f.utc_offset_seconds
   const t = (s) => Date.parse(s + 'Z') - off * 1000
@@ -38,6 +42,7 @@ export async function fetchSnapshot(place, fetchJson = getJson) {
       isDay: f.current.is_day === 1,
       code: f.current.weather_code,
       uv: f.current.uv_index,
+      wetBulb: f.current.wet_bulb_temperature_2m,
     },
     daily0: {
       code: f.daily.weather_code[0],
@@ -47,7 +52,14 @@ export async function fetchSnapshot(place, fetchJson = getJson) {
       precipProbMax: f.daily.precipitation_probability_max?.[0] ?? 0,
       uvMax: f.daily.uv_index_max?.[0] ?? 0,
     },
-    hourly: (f.hourly?.time ?? []).map((s, i) => ({ time: t(s), code: f.hourly.weather_code[i] })),
+    hourly: (f.hourly?.time ?? []).map((s, i) => ({
+      time: t(s),
+      code: f.hourly.weather_code[i],
+      cape: f.hourly.cape?.[i],
+      liftedIndex: f.hourly.lifted_index?.[i],
+      wetBulb: f.hourly.wet_bulb_temperature_2m?.[i],
+    })),
+    rainProb: ens ? ensembleRainProb(ens) : [],
     minutely: (f.minutely_15?.time ?? []).map((s, i) => ({ time: t(s), precip: f.minutely_15.precipitation[i] ?? 0 })),
     air: air?.current ? { usAqi: air.current.us_aqi ?? null } : null,
   }
@@ -57,7 +69,7 @@ const placeTitle = (p, lang) => (lang === 'th' ? p.nameLocal ?? p.nameTh ?? p.na
 
 export function createPush({ dataDir, fetchJson = getJson, now = () => Date.now(), sendFn } = {}) {
   const file = join(dataDir, 'push.json')
-  let state = { vapid: null, subs: {}, sent: {} }
+  let state = { vapid: null, subs: {}, sent: {}, digests: {} }
   let saving = Promise.resolve()
 
   const save = () => {
@@ -105,7 +117,13 @@ export function createPush({ dataDir, fetchJson = getJson, now = () => Date.now(
     const s = b?.subscription
     if (!s || typeof s.endpoint !== 'string' || !s.endpoint.startsWith('https://') || !s.keys?.p256dh || !s.keys?.auth) return null
     const places = (Array.isArray(b.places) ? b.places : []).filter((id) => KNOWN.has(id)).slice(0, 4)
-    const prefs = { rain: !!b.prefs?.rain, alerts: !!b.prefs?.alerts, morning: !!b.prefs?.morning }
+    const prefs = {
+      rain: !!b.prefs?.rain,
+      alerts: !!b.prefs?.alerts,
+      morning: !!b.prefs?.morning,
+      hourly: !!b.prefs?.hourly,
+      hourlyChanged: !!b.prefs?.hourlyChanged,
+    }
     return {
       sub: { endpoint: s.endpoint, keys: { p256dh: String(s.keys.p256dh), auth: String(s.keys.auth) } },
       places,
@@ -164,7 +182,7 @@ export function createPush({ dataDir, fetchJson = getJson, now = () => Date.now(
   /** One scheduler pass. Returns the number of notifications sent. */
   async function tick() {
     const t = now()
-    const entries = Object.values(state.subs).filter((e) => e.places.length && (e.prefs.rain || e.prefs.alerts || e.prefs.morning))
+    const entries = Object.values(state.subs).filter((e) => e.places.length && (e.prefs.rain || e.prefs.alerts || e.prefs.morning || e.prefs.hourly))
     const ids = [...new Set(entries.flatMap((e) => e.places))]
     const snaps = {}
     for (const id of ids) {
@@ -199,7 +217,7 @@ export function createPush({ dataDir, fetchJson = getJson, now = () => Date.now(
 
         if (e.prefs.alerts) {
           for (const a of alertsFor({ current: w.current, daily0: w.daily0, air: w.air, hourly: w.hourly, now: t })) {
-            const pushable = (a.id === 'aqi' || a.id === 'heat') ? a.level >= 2 : a.id === 'storm'
+            const pushable = a.id === 'storm' ? a.level >= 2 : (a.id === 'aqi' || a.id === 'heat' || a.id === 'humid') && a.level >= 2
             if (!pushable) continue
             const ttl = a.id === 'storm' ? 6 * HOUR : 12 * HOUR
             if (!once(`${base}|alert|${a.id}|${a.level}`, ttl)) continue
@@ -224,6 +242,39 @@ export function createPush({ dataDir, fetchJson = getJson, now = () => Date.now(
               e.lang,
             )
             if (await deliver(e, { ...txt, tag: `morning-${id}`, url: '/' })) count++
+          }
+        }
+
+        if (e.prefs.hourly) {
+          const local = (((t / MIN + place.utcOffsetMin) % 1440) + 1440) % 1440
+          const hour = Math.floor(local / 60)
+          if (hour >= 7 && hour <= 22 && local % 60 < 12) {
+            const day = new Date(t + place.utcOffsetMin * MIN).toISOString().slice(0, 10)
+            if (once(`${base}|hourly|${day}|${hour}`, 50 * MIN)) {
+              const alerts = alertsFor({ current: w.current, daily0: w.daily0, air: w.air, hourly: w.hourly, now: t })
+              const rainRc = rainChance(w.rainProb, t)
+              const digest = hourlyDigest({ temp: w.current.temp, code: w.current.code, alerts, rainP: rainRc?.p ?? 0 })
+              if (!e.prefs.hourlyChanged || hourlyChanged(state.digests[base], digest)) {
+                const top = alerts.find((a) => a.id !== 'umbrella') ?? alerts[0]
+                const txt = hourlyText(
+                  {
+                    placeName: name,
+                    temp: Math.round(w.current.temp),
+                    feels: Math.round(w.current.feelsLike),
+                    code: w.current.code,
+                    rainRc,
+                    offMin: place.utcOffsetMin,
+                    alertTitle: top ? alertText(top, e.lang).title : undefined,
+                  },
+                  e.lang,
+                )
+                // same tag per place: the new update silently replaces the previous one
+                if (await deliver(e, { ...txt, tag: `hourly-${id}`, url: '/' })) {
+                  count++
+                  state.digests[base] = digest
+                }
+              }
+            }
           }
         }
       }

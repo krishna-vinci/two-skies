@@ -92,7 +92,7 @@ export function DetailView({ place, from, override, onClose }: { place: Place; f
               variants={{ show: { transition: { staggerChildren: 0.07, delayChildren: 0.35 } } }}
               className="grid grid-cols-1 items-start gap-3 md:grid-cols-2"
             >
-              <HeadsUp w={w} nowMs={now.getTime()} />
+              <HeadsUp w={w} nowMs={now.getTime()} offMin={place.utcOffsetMin} />
               <Hourly place={place} w={w} now={now.getTime()} />
               <Daily place={place} w={w} />
               <SunArc place={place} w={w} now={now.getTime()} />
@@ -103,6 +103,11 @@ export function DetailView({ place, from, override, onClose }: { place: Place; f
           ) : (
             <div className="text-center text-sm text-white/70">{q.isError ? t('unavailable') : t('loading')}</div>
           )}
+          <p className="mt-8 text-center text-xs font-light text-white/45">
+            <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer" className="underline decoration-white/25 underline-offset-2">
+              {t('attribution')}
+            </a>
+          </p>
         </div>
       </div>
     </motion.div>

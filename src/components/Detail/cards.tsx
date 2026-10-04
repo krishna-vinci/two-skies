@@ -1,6 +1,6 @@
 import { motion } from 'motion/react'
 import type { ReactNode } from 'react'
-import { alertText, nowcastText } from '../../../shared/messages.js'
+import { alertText, nowcastText, rainChanceText } from '../../../shared/messages.js'
 import { AlertIcon, Drop, WeatherIcon } from '../icons'
 import { aqiCategory, uvKey } from '../../lib/labels'
 import { DIR_KEYS, localeFor, useI18n } from '../../lib/i18n'
@@ -25,11 +25,13 @@ export function Card({ title, children, className = '' }: { title: string; child
 const fmt = (tz: string, opts: Intl.DateTimeFormatOptions, t: number, locale = 'en-GB') =>
   new Intl.DateTimeFormat(locale, { timeZone: tz, ...opts }).format(t)
 
-export function HeadsUp({ w, nowMs }: { w: Weather; nowMs: number }) {
+export function HeadsUp({ w, nowMs, offMin }: { w: Weather; nowMs: number; offMin: number }) {
   const { t, lang } = useI18n()
   const ins = useInsights(w, nowMs)
   if (!ins) return null
-  const rain = ins.nc.kind !== 'unknown' ? nowcastText(ins.nc, lang) : ''
+  const imminent = ins.nc.kind === 'soon' || ins.nc.kind === 'now' || ins.nc.kind === 'ending'
+  const chance = ins.rc && ins.rc.p >= 0.3 ? rainChanceText(ins.rc, offMin, lang) : ''
+  const rain = imminent ? nowcastText(ins.nc, lang) : chance || (ins.nc.kind === 'dry' ? nowcastText(ins.nc, lang) : '')
   if (!ins.alerts.length && !rain) return null
   return (
     <Card title={t('headsUp')} className="md:col-span-2">

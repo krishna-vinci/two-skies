@@ -4,6 +4,7 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import './index.css'
 import App from './App'
 import { LangProvider } from './lib/i18n'
+import { PlacesProvider } from './lib/placesStore'
 import { persister, queryClient } from './lib/queryClient'
 
 createRoot(document.getElementById('root')!).render(
@@ -13,7 +14,9 @@ createRoot(document.getElementById('root')!).render(
       persistOptions={{ persister, maxAge: 24 * 60 * 60_000 }}
     >
       <LangProvider>
-        <App />
+        <PlacesProvider>
+          <App />
+        </PlacesProvider>
       </LangProvider>
     </PersistQueryClientProvider>
   </StrictMode>,

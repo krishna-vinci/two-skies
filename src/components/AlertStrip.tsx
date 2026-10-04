@@ -1,17 +1,19 @@
-import { alertText, nowcastText } from '../../shared/messages.js'
+import { alertText, nowcastText, rainChanceText } from '../../shared/messages.js'
 import { useInsights } from '../lib/useInsights'
 import { useI18n } from '../lib/i18n'
 import type { Weather } from '../lib/types'
 import { AlertIcon, Drop } from './icons'
 
 /** Compact pills for the home panel: rain outlook + most serious alert. */
-export function AlertStrip({ w, nowMs }: { w: Weather | undefined; nowMs: number }) {
+export function AlertStrip({ w, nowMs, offMin }: { w: Weather | undefined; nowMs: number; offMin: number }) {
   const { lang } = useI18n()
   const ins = useInsights(w, nowMs)
   if (!ins) return null
   const top = ins.alerts.find((a) => a.id !== 'umbrella') ?? ins.alerts[0]
   const showRain = ins.nc.kind === 'soon' || ins.nc.kind === 'now' || ins.nc.kind === 'ending'
-  if (!top && !showRain) return null
+  // no imminent rain from the 15-minute model, but the ensemble says it is likely soon
+  const showChance = !showRain && !!ins.rc && ins.rc.p >= 0.4
+  if (!top && !showRain && !showChance) return null
   const pill = 'glass flex max-w-full items-center gap-1.5 px-3 py-1.5 text-[12.5px] font-light'
   return (
     <div className="mt-3 flex flex-wrap gap-2">
@@ -19,6 +21,12 @@ export function AlertStrip({ w, nowMs }: { w: Weather | undefined; nowMs: number
         <div className={pill} style={{ borderRadius: 999 }}>
           <span className="shrink-0 text-sky-200"><Drop size={14} /></span>
           <span className="truncate">{nowcastText(ins.nc, lang)}</span>
+        </div>
+      )}
+      {showChance && ins.rc && (
+        <div className={pill} style={{ borderRadius: 999 }}>
+          <span className="shrink-0 text-sky-200"><Drop size={14} /></span>
+          <span className="truncate">{rainChanceText(ins.rc, offMin, lang)}</span>
         </div>
       )}
       {top && (

@@ -2,7 +2,7 @@ export type PushSupport = 'ok' | 'unsupported' | 'needs-https' | 'ios-install'
 
 export interface PushSettings {
   places: string[]
-  prefs: { rain: boolean; alerts: boolean; morning: boolean }
+  prefs: { rain: boolean; alerts: boolean; morning: boolean; hourly: boolean; hourlyChanged: boolean }
   lang: 'en' | 'th'
 }
 
@@ -47,7 +47,8 @@ export async function loadSettings(): Promise<PushSettings | null> {
   const sub = await currentSubscription()
   if (!sub) return null
   const s = await api<{ subscribed: boolean } & Partial<PushSettings>>('/api/push/state', { endpoint: sub.endpoint })
-  return s.subscribed ? { places: s.places ?? [], prefs: s.prefs!, lang: s.lang ?? 'en' } : null
+  const none = { rain: false, alerts: false, morning: false, hourly: false, hourlyChanged: false }
+  return s.subscribed ? { places: s.places ?? [], prefs: { ...none, ...s.prefs }, lang: s.lang ?? 'en' } : null
 }
 
 export async function enablePush(settings: PushSettings): Promise<'ok' | 'denied'> {

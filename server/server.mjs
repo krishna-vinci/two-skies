@@ -8,6 +8,7 @@ import { extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { homedir } from 'node:os'
 import { createPush } from './push.mjs'
+import { createPlacesStore } from './places.mjs'
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)), 'dist')
 const PORT = Number(process.env.PORT ?? 47318)
@@ -18,6 +19,8 @@ const SECRET = process.env.TS_COOKIE_SECRET ?? ''
 const DATA_DIR = process.env.DATA_DIR ?? join(homedir(), '.local', 'state', 'two-skies')
 const push = createPush({ dataDir: DATA_DIR })
 await push.init()
+const places = createPlacesStore({ dataDir: DATA_DIR })
+await places.init()
 const COOKIE = 'ts_session'
 const MAX_AGE = 100 * 24 * 60 * 60 // 100 days, seconds
 const PUBLIC = new Set(['/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png'])
@@ -206,6 +209,15 @@ createServer(async (req, res) => {
         return await push.handleApi(req, res, url, readBody)
       } catch (e) {
         console.error('push api error', e)
+        res.writeHead(500, { 'content-type': 'application/json' }).end('{"error":"server"}')
+        return
+      }
+    }
+    if (url.pathname === '/api/places' || url.pathname.startsWith('/api/places/')) {
+      try {
+        return await places.handleApi(req, res, url, readBody)
+      } catch (e) {
+        console.error('places api error', e)
         res.writeHead(500, { 'content-type': 'application/json' }).end('{"error":"server"}')
         return
       }

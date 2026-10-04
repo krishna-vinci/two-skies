@@ -20,7 +20,7 @@ export function NotifySheet({ defaultPlaces, onClose }: { defaultPlaces: string[
   const support = pushSupport()
   const [settings, setSettings] = useState<PushSettings>({
     places: defaultPlaces,
-    prefs: { rain: true, alerts: true, morning: false },
+    prefs: { rain: true, alerts: true, morning: false, hourly: false, hourlyChanged: false },
     lang,
   })
   const [subscribed, setSubscribed] = useState<boolean | null>(support === 'ok' ? null : false)
@@ -81,6 +81,12 @@ export function NotifySheet({ defaultPlaces, onClose }: { defaultPlaces: string[
             <Toggle on={settings.prefs.rain} onChange={(v) => update({ ...settings, prefs: { ...settings.prefs, rain: v } })} label={t('notifyRain')} />
             <Toggle on={settings.prefs.alerts} onChange={(v) => update({ ...settings, prefs: { ...settings.prefs, alerts: v } })} label={t('notifyAlerts')} />
             <Toggle on={settings.prefs.morning} onChange={(v) => update({ ...settings, prefs: { ...settings.prefs, morning: v } })} label={t('notifyMorning')} />
+            <Toggle on={settings.prefs.hourly} onChange={(v) => update({ ...settings, prefs: { ...settings.prefs, hourly: v } })} label={t('notifyHourly')} />
+            {settings.prefs.hourly && (
+              <div className="pl-4">
+                <Toggle on={settings.prefs.hourlyChanged} onChange={(v) => update({ ...settings, prefs: { ...settings.prefs, hourlyChanged: v } })} label={t('notifyHourlyChanged')} />
+              </div>
+            )}
           </div>
 
           <div className="mt-4">

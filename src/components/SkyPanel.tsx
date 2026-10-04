@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { weatherLabel } from '../../shared/messages.js'
 import { AlertStrip } from './AlertStrip'
 import { SkyCanvas } from './SkyCanvas'
-import { Swap, WeatherIcon } from './icons'
+import { Pin, WeatherIcon } from './icons'
 import { localTime } from '../lib/couple'
 import { agoParts, useNow, useTween } from '../lib/hooks'
 import { placeLabels, useI18n } from '../lib/i18n'
@@ -15,13 +15,12 @@ import type { SkyInput } from '../sky/skyState'
 interface Props {
   place: Place
   index: number
-  nextName: string
   override?: SkyInput | null
   onOpen: (rect: DOMRect) => void
   onSwitch: () => void
 }
 
-export function SkyPanel({ place, index, nextName, override, onOpen, onSwitch }: Props) {
+export function SkyPanel({ place, index, override, onOpen, onSwitch }: Props) {
   const { t, lang } = useI18n()
   const q = useWeather(place)
   const w = q.data
@@ -72,7 +71,7 @@ export function SkyPanel({ place, index, nextName, override, onOpen, onSwitch }:
               <div className="mt-1.5 text-[11px] uppercase tracking-[0.18em] text-white/70">{t('localTime')}</div>
             </div>
           </div>
-          <AlertStrip w={w} nowMs={now.getTime()} />
+          <AlertStrip w={w} nowMs={now.getTime()} offMin={place.utcOffsetMin} />
         </div>
 
         <div className="flex items-end justify-between gap-3">
@@ -125,8 +124,8 @@ export function SkyPanel({ place, index, nextName, override, onOpen, onSwitch }:
             className="glass flex shrink-0 items-center gap-2 px-3.5 py-2 text-xs font-light text-white/90 transition active:scale-95"
             style={{ borderRadius: 999 }}
           >
-            <Swap size={14} />
-            {nextName}
+            <Pin size={14} />
+            {t('places')}
           </button>
         </div>
       </div>

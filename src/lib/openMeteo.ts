@@ -1,3 +1,4 @@
+import { ensembleRainProb } from '../../shared/rules.js'
 import type { Place, Weather } from './types'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -5,8 +6,8 @@ export type RawForecast = any
 export type RawAir = any
 
 const CURRENT =
-  'temperature_2m,apparent_temperature,relative_humidity_2m,is_day,precipitation,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,uv_index'
-const HOURLY = 'temperature_2m,precipitation_probability,weather_code,is_day'
+  'temperature_2m,apparent_temperature,relative_humidity_2m,is_day,precipitation,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,uv_index,wet_bulb_temperature_2m'
+const HOURLY = 'temperature_2m,precipitation_probability,weather_code,is_day,cape,lifted_index,wet_bulb_temperature_2m'
 const DAILY =
   'weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,sunrise,sunset,precipitation_probability_max,uv_index_max'
 
@@ -20,7 +21,16 @@ export const buildAirUrl = (p: Place) =>
   `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${p.lat}&longitude=${p.lon}` +
   `&current=us_aqi,pm2_5,pm10&timezone=auto`
 
-export function normalize(f: RawForecast, a: RawAir | null, now = Date.now()): Weather {
+export const buildEnsembleUrl = (p: Place) =>
+  `https://ensemble-api.open-meteo.com/v1/ensemble?latitude=${p.lat}&longitude=${p.lon}` +
+  `&hourly=precipitation&models=ecmwf_ifs025&forecast_hours=12&timezone=auto`
+
+export function normalize(
+  f: RawForecast,
+  a: RawAir | null,
+  now = Date.now(),
+  rainProb?: { time: number; p: number }[],
+): Weather {
   const off = f.utc_offset_seconds as number
   const t = (s: string) => Date.parse(s + 'Z') - off * 1000
   const c = f.current
@@ -41,7 +51,9 @@ export function normalize(f: RawForecast, a: RawAir | null, now = Date.now()): W
       windSpeed: c.wind_speed_10m,
       windDir: c.wind_direction_10m,
       uv: c.uv_index,
+      wetBulb: c.wet_bulb_temperature_2m,
     },
+    rainProb: rainProb?.length ? rainProb : undefined,
     minutely: f.minutely_15?.time?.map((s: string, i: number) => ({
       time: t(s),
       precip: f.minutely_15.precipitation[i] ?? 0,
@@ -52,6 +64,9 @@ export function normalize(f: RawForecast, a: RawAir | null, now = Date.now()): W
       precipProb: h.precipitation_probability[i] ?? 0,
       code: h.weather_code[i],
       isDay: h.is_day[i] === 1,
+      cape: h.cape?.[i],
+      liftedIndex: h.lifted_index?.[i],
+      wetBulb: h.wet_bulb_temperature_2m?.[i],
     })),
     daily: d.time.map((s: string, i: number) => ({
       date: t(s + 'T00:00'),
@@ -77,9 +92,10 @@ async function getJson(url: string) {
 }
 
 export async function fetchWeather(place: Place): Promise<Weather> {
-  const [forecast, air] = await Promise.all([
+  const [forecast, air, ensemble] = await Promise.all([
     getJson(buildForecastUrl(place)),
     getJson(buildAirUrl(place)).catch(() => null),
+    getJson(buildEnsembleUrl(place)).catch(() => null),
   ])
-  return normalize(forecast, air)
+  return normalize(forecast, air, Date.now(), ensemble ? ensembleRainProb(ensemble) : undefined)
 }

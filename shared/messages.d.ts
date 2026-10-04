@@ -8,3 +8,8 @@ export function morningText(
   lang: Lang,
 ): { title: string; body: string }
 export function testText(lang: Lang): { title: string; body: string }
+export function rainChanceText(rc: { p: number; time: number }, offMin: number, lang: Lang): string
+export function hourlyText(
+  i: { placeName: string; temp: number; feels: number; code: number; rainRc: { p: number; time: number } | null; offMin: number; alertTitle?: string },
+  lang: Lang,
+): { title: string; body: string }
