@@ -1,11 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { PLACES } from './places'
+import { useConfig } from './config'
 import type { Place, StoredPlace } from './types'
 import { tzOffsetMin } from './tz'
 
 const CACHE = 'ts.customPlaces'
 
-const toPlace = (r: StoredPlace): Place => ({ ...r, owner: null, utcOffsetMin: tzOffsetMin(r.tz) })
+const toPlace = (r: StoredPlace): Place => ({ ...r, utcOffsetMin: tzOffsetMin(r.tz) })
 
 function loadCache(): StoredPlace[] {
   try {
@@ -32,7 +32,7 @@ async function api(path: string, body?: unknown): Promise<StoredPlace[] | null> 
 }
 
 interface Ctx {
-  /** Built-in cities first, then added places */
+  /** Our configured cities first, then added places */
   all: Place[]
   custom: Place[]
   byId: (id: string) => Place | undefined
@@ -42,6 +42,7 @@ interface Ctx {
 const PlacesContext = createContext<Ctx | null>(null)
 
 export function PlacesProvider({ children }: { children: ReactNode }) {
+  const { ourCities } = useConfig()
   const [records, setRecords] = useState<StoredPlace[]>(loadCache)
 
   // server list is shared between devices and wins when reachable
@@ -75,9 +76,9 @@ export function PlacesProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<Ctx>(() => {
     const custom = records.map(toPlace)
-    const all = [...PLACES, ...custom]
+    const all = [...ourCities, ...custom]
     return { all, custom, byId: (id) => all.find((p) => p.id === id), add, remove }
-  }, [records, add, remove])
+  }, [records, ourCities, add, remove])
 
   return <PlacesContext.Provider value={value}>{children}</PlacesContext.Provider>
 }

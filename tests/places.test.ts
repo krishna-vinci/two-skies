@@ -19,7 +19,7 @@ const good = { id: 'c:g1153671', name: 'Chiang Mai', subtitle: 'Chiang Mai, Thai
 
 test('cleanPlace accepts a good place and rejects bad input', () => {
   expect(cleanPlace(good)).toMatchObject({ id: 'c:g1153671', lat: 18.7904, tz: 'Asia/Bangkok' })
-  expect(cleanPlace({ ...good, id: 'khonkaen' })).toBeNull() // must be a custom id
+  expect(cleanPlace({ ...good, id: 'city' })).toBeNull() // must be a custom id
   expect(cleanPlace({ ...good, lat: 95 })).toBeNull()
   expect(cleanPlace({ ...good, lon: 'x' })).toBeNull()
   expect(cleanPlace({ ...good, tz: 'Mars/Base' })).toBeNull()

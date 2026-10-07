@@ -1,9 +1,9 @@
 import { expect, test } from 'vitest'
-import { PLACES, placeById, placesFor } from '../src/lib/places'
+import { chiangmai, mumbai } from './fixtures'
 import { timeDiffMin, formatDiff, tempGap, localTime } from '../src/lib/couple'
 
-test('thailand is 90 min ahead of kothagudem', () => {
-  expect(timeDiffMin(placeById('kothagudem'), placeById('khonkaen'))).toBe(90)
+test('Chiang Mai (ICT) is 90 min ahead of Mumbai (IST)', () => {
+  expect(timeDiffMin(mumbai, chiangmai)).toBe(90)
 })
 test('formatDiff', () => {
   expect(formatDiff(90)).toBe('1h 30m')
@@ -17,11 +17,6 @@ test('tempGap wording uses rounded delta', () => {
 })
 test('localTime formats HH:mm in place tz', () => {
   const d = new Date('2026-10-03T06:30:00Z')
-  expect(localTime(d, placeById('kothagudem'))).toBe('12:00')
-  expect(localTime(d, placeById('khonkaen'))).toBe('13:30')
-})
-test('four places, two per owner', () => {
-  expect(PLACES).toHaveLength(4)
-  expect(placesFor('him').map((p) => p.id)).toEqual(['kothagudem', 'hyderabad'])
-  expect(placesFor('her').map((p) => p.id)).toEqual(['khonkaen', 'bangkok'])
+  expect(localTime(d, mumbai)).toBe('12:00')
+  expect(localTime(d, chiangmai)).toBe('13:30')
 })

@@ -16,12 +16,16 @@ interface Props {
   place: Place
   index: number
   nextName: string
+  /** Optional name of this side (shown above the city) */
+  label?: string
+  /** Only show the swap button when the side has more than one city */
+  canSwitch: boolean
   override?: SkyInput | null
   onOpen: (rect: DOMRect) => void
   onSwitch: () => void
 }
 
-export function SkyPanel({ place, index, nextName, override, onOpen, onSwitch }: Props) {
+export function SkyPanel({ place, index, nextName, label, canSwitch, override, onOpen, onSwitch }: Props) {
   const { t, lang } = useI18n()
   const q = useWeather(place)
   const w = q.data
@@ -63,6 +67,7 @@ export function SkyPanel({ place, index, nextName, override, onOpen, onSwitch }:
                 transition={{ duration: 0.3 }}
                 className="text-soft-shadow min-w-0"
               >
+                {label && <div className="mb-1 truncate text-[11px] uppercase tracking-[0.2em] text-white/70">{label}</div>}
                 <h2 className="truncate text-[28px] font-light leading-tight tracking-tight md:text-4xl">{labels.title}</h2>
                 <p className="mt-1 text-[15px] font-light leading-tight text-white/80">{labels.sub || ' '}</p>
               </motion.div>
@@ -116,7 +121,7 @@ export function SkyPanel({ place, index, nextName, override, onOpen, onSwitch }:
             )}
           </div>
 
-          <button
+          {canSwitch && <button
             aria-label={t('switchPlace')}
             onClick={(e) => {
               e.stopPropagation()
@@ -127,7 +132,7 @@ export function SkyPanel({ place, index, nextName, override, onOpen, onSwitch }:
           >
             <Swap size={14} />
             {nextName}
-          </button>
+          </button>}
         </div>
       </div>
     </motion.section>

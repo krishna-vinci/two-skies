@@ -2,14 +2,13 @@
 import webpush from 'web-push'
 import { chmod, mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { PLACES } from '../shared/places.js'
 import { alertsFor, ensembleRainProb, hourlyChanged, hourlyDigest, nowcast, rainChance } from '../shared/rules.js'
 import { alertText, hourlyText, morningText, nowcastText, testText } from '../shared/messages.js'
 
 const MIN = 60_000
 const HOUR = 60 * MIN
-const KNOWN = new Set(PLACES.map((p) => p.id))
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? 'https://github.com/krishna-vinci/two-skies'
+// Push services want a contact (mailto: or https URL); set VAPID_SUBJECT to yours.
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? 'https://github.com/two-skies/two-skies'
 
 const getJson = async (url) => {
   const r = await fetch(url)
@@ -65,9 +64,13 @@ export async function fetchSnapshot(place, fetchJson = getJson) {
   }
 }
 
-const placeTitle = (p, lang) => (lang === 'th' ? p.nameLocal ?? p.nameTh ?? p.name : p.name)
+const placeTitle = (p, lang) => (lang === 'th' ? p.nameTh ?? p.name : p.name)
 
-export function createPush({ dataDir, fetchJson = getJson, now = () => Date.now(), sendFn } = {}) {
+/**
+ * getPlaces(): the cities push alerts may watch ({ id, name, nameTh?, lat, lon, tz, utcOffsetMin }).
+ * It is a function so a changed config takes effect without a restart.
+ */
+export function createPush({ dataDir, getPlaces = () => [], fetchJson = getJson, now = () => Date.now(), sendFn } = {}) {
   const file = join(dataDir, 'push.json')
   let state = { vapid: null, subs: {}, sent: {}, digests: {} }
   let saving = Promise.resolve()
@@ -116,7 +119,8 @@ export function createPush({ dataDir, fetchJson = getJson, now = () => Date.now(
   function validEntry(b) {
     const s = b?.subscription
     if (!s || typeof s.endpoint !== 'string' || !s.endpoint.startsWith('https://') || !s.keys?.p256dh || !s.keys?.auth) return null
-    const places = (Array.isArray(b.places) ? b.places : []).filter((id) => KNOWN.has(id)).slice(0, 4)
+    const known = new Set(getPlaces().map((p) => p.id))
+    const places = (Array.isArray(b.places) ? b.places : []).filter((id) => known.has(id)).slice(0, 6)
     const prefs = {
       rain: !!b.prefs?.rain,
       alerts: !!b.prefs?.alerts,
@@ -182,12 +186,13 @@ export function createPush({ dataDir, fetchJson = getJson, now = () => Date.now(
   /** One scheduler pass. Returns the number of notifications sent. */
   async function tick() {
     const t = now()
+    const cities = getPlaces()
     const entries = Object.values(state.subs).filter((e) => e.places.length && (e.prefs.rain || e.prefs.alerts || e.prefs.morning || e.prefs.hourly))
-    const ids = [...new Set(entries.flatMap((e) => e.places))]
+    const ids = [...new Set(entries.flatMap((e) => e.places))].filter((id) => cities.some((p) => p.id === id))
     const snaps = {}
     for (const id of ids) {
       try {
-        snaps[id] = await fetchSnapshot(PLACES.find((p) => p.id === id), fetchJson)
+        snaps[id] = await fetchSnapshot(cities.find((p) => p.id === id), fetchJson)
       } catch {
         /* skip this place this round */
       }
@@ -202,9 +207,9 @@ export function createPush({ dataDir, fetchJson = getJson, now = () => Date.now(
 
     for (const e of entries) {
       for (const id of e.places) {
-        const place = PLACES.find((p) => p.id === id)
+        const place = cities.find((p) => p.id === id)
         const w = snaps[id]
-        if (!w) continue
+        if (!place || !w) continue
         const name = placeTitle(place, e.lang)
         const base = `${e.sub.endpoint}|${id}`
 

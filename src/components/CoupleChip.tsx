@@ -1,25 +1,25 @@
-import { Bell, Heart, Pin } from './icons'
+import { Heart, Pin, Sliders } from './icons'
 import { formatDiff, tempGap, timeDiffMin } from '../lib/couple'
 import { placeLabels, useI18n } from '../lib/i18n'
 import type { Place } from '../lib/types'
 import { useWeather } from '../lib/useWeather'
 
 interface Props {
-  him: Place
-  her: Place
+  a: Place
+  b: Place
   onTogether: () => void
-  onNotify: () => void
+  onSettings: () => void
   onPlaces: () => void
 }
 
-export function CoupleChip({ him, her, onTogether, onNotify, onPlaces }: Props) {
+export function CoupleChip({ a, b, onTogether, onSettings, onPlaces }: Props) {
   const { t, lang, setLang } = useI18n()
-  const a = useWeather(him).data
-  const b = useWeather(her).data
-  const diff = timeDiffMin(him, her)
-  const gap = a && b ? tempGap(a.current.temp, b.current.temp) : null
-  const herName = placeLabels(her, lang).title
-  const timeText = diff === 0 ? t('sameTime') : `${herName} ${diff > 0 ? '+' : '−'}${formatDiff(diff, lang)}`
+  const wa = useWeather(a).data
+  const wb = useWeather(b).data
+  const diff = timeDiffMin(a, b)
+  const gap = wa && wb ? tempGap(wa.current.temp, wb.current.temp) : null
+  const bName = placeLabels(b, lang).title
+  const timeText = diff === 0 ? t('sameTime') : `${bName} ${diff > 0 ? '+' : '−'}${formatDiff(diff, lang)}`
   const gapText = !gap ? '' : gap.delta === 0 ? t('chipSame') : t(gap.delta > 0 ? 'chipWarmer' : 'chipCooler', { n: Math.abs(gap.delta) })
   const round = 'glass flex h-8 w-8 shrink-0 items-center justify-center text-[11.5px] font-normal transition active:scale-95'
 
@@ -46,8 +46,8 @@ export function CoupleChip({ him, her, onTogether, onNotify, onPlaces }: Props) 
       <button onClick={onPlaces} className={round} style={{ borderRadius: 999 }} aria-label={t('places')}>
         <Pin size={15} />
       </button>
-      <button onClick={onNotify} className={round} style={{ borderRadius: 999 }} aria-label={t('notifications')}>
-        <Bell size={15} />
+      <button onClick={onSettings} className={round} style={{ borderRadius: 999 }} aria-label={t('settings')}>
+        <Sliders size={15} />
       </button>
     </div>
   )

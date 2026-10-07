@@ -5,8 +5,9 @@ import { skyState } from '../sky/skyState'
 const HOUR = 3_600_000
 const DAY = 24 * HOUR
 
-/** Assumed waking hours, local time. */
+/** Default waking hours, local time (configurable in Settings). */
 export const AWAKE = { from: 7, to: 23 }
+export type Awake = { from: number; to: number }
 
 export interface Win {
   start: number
@@ -19,11 +20,11 @@ const localMidnight = (t: number, offMin: number) => {
 }
 
 /** Awake windows (absolute ms) for the days around `now`. */
-export function awakeWindows(place: Place, now: number): Win[] {
+export function awakeWindows(place: Place, now: number, awake: Awake = AWAKE): Win[] {
   const today = localMidnight(now, place.utcOffsetMin)
   return [-1, 0, 1, 2].map((d) => ({
-    start: today + d * DAY + AWAKE.from * HOUR,
-    end: today + d * DAY + AWAKE.to * HOUR,
+    start: today + d * DAY + awake.from * HOUR,
+    end: today + d * DAY + awake.to * HOUR,
   }))
 }
 
@@ -40,11 +41,11 @@ export function overlap(a: Win[], b: Win[]): Win[] {
 
 export type TogetherState =
   | { kind: 'both'; minutes: number }
-  | { kind: 'him-asleep' | 'her-asleep' | 'both-asleep'; minutes: number }
+  | { kind: 'a-asleep' | 'b-asleep' | 'both-asleep'; minutes: number }
 
-export function togetherState(now: number, him: Place, her: Place): TogetherState {
-  const hw = awakeWindows(him, now)
-  const rw = awakeWindows(her, now)
+export function togetherState(now: number, a: Place, b: Place, awake: Awake = AWAKE): TogetherState {
+  const hw = awakeWindows(a, now, awake)
+  const rw = awakeWindows(b, now, awake)
   const inWin = (ws: Win[]) => ws.some((w) => w.start <= now && now < w.end)
   const both = overlap(hw, rw)
   const cur = both.find((w) => w.start <= now && now < w.end)
@@ -53,8 +54,8 @@ export function togetherState(now: number, him: Place, her: Place): TogetherStat
   const minutes = next ? Math.round((next.start - now) / 60_000) : 0
   const hAwake = inWin(hw)
   const rAwake = inWin(rw)
-  if (hAwake && !rAwake) return { kind: 'her-asleep', minutes }
-  if (rAwake && !hAwake) return { kind: 'him-asleep', minutes }
+  if (hAwake && !rAwake) return { kind: 'b-asleep', minutes }
+  if (rAwake && !hAwake) return { kind: 'a-asleep', minutes }
   return { kind: 'both-asleep', minutes }
 }
 

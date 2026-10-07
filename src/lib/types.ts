@@ -1,28 +1,41 @@
-export type Owner = 'him' | 'her'
+/** The two skies being watched. */
+export type Side = 'a' | 'b'
 
 export interface Place {
   id: string
+  /** English / Latin name */
   name: string
-  nameLocal?: string
+  /** Thai name, when known (shown instead of `name` when the UI is in Thai) */
   nameTh?: string
   subtitle?: string
   lat: number
   lon: number
   tz: string
   utcOffsetMin: number
-  /** null for added (browse-only) places */
-  owner: Owner | null
 }
 
-/** What the server stores for an added place; the offset is computed at runtime. */
+/** What the server stores for a place; the UTC offset is computed at runtime. */
 export interface StoredPlace {
   id: string
   name: string
-  nameLocal?: string
+  nameTh?: string
   subtitle?: string
   lat: number
   lon: number
   tz: string
+}
+
+export interface SideConfig {
+  /** Optional name for this side ("Ana", "Mum", "Me") */
+  label?: string
+  /** 1-3 cities; the first is the default */
+  places: StoredPlace[]
+}
+
+export interface AppConfig {
+  sides: [SideConfig, SideConfig]
+  /** Assumed waking hours (local), used by the Together screen */
+  awake: { from: number; to: number }
 }
 
 export interface Weather {

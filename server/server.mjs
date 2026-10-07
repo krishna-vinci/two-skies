@@ -1,23 +1,38 @@
 // Password-gated static server for the Two Skies build. No dependencies.
 // Env: TS_PASSWORD (plain) or TS_PASSWORD_HASH (scrypt$salt$hash), TS_COOKIE_SECRET, PORT, HOST
 import { createServer } from 'node:http'
-import { createHmac, scryptSync, timingSafeEqual } from 'node:crypto'
+import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 import { brotliCompressSync, gzipSync, constants as zc } from 'node:zlib'
-import { readFile, stat } from 'node:fs/promises'
+import { chmod, mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { homedir } from 'node:os'
 import { createPush } from './push.mjs'
 import { createPlacesStore } from './places.mjs'
+import { createConfigStore } from './config.mjs'
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)), 'dist')
 const PORT = Number(process.env.PORT ?? 47318)
 const HOST = process.env.HOST ?? '0.0.0.0'
 const PASSWORD = process.env.TS_PASSWORD ?? ''
 const HASH = process.env.TS_PASSWORD_HASH ?? ''
-const SECRET = process.env.TS_COOKIE_SECRET ?? ''
+let SECRET = process.env.TS_COOKIE_SECRET ?? ''
 const DATA_DIR = process.env.DATA_DIR ?? join(homedir(), '.local', 'state', 'two-skies')
-const push = createPush({ dataDir: DATA_DIR })
+// No TS_COOKIE_SECRET? Generate one once and keep it with the data, so sessions survive restarts.
+if (!SECRET) {
+  const f = join(DATA_DIR, 'cookie-secret')
+  try {
+    SECRET = (await readFile(f, 'utf8')).trim()
+  } catch {
+    SECRET = randomBytes(32).toString('hex')
+    await mkdir(DATA_DIR, { recursive: true })
+    await writeFile(f, SECRET, { mode: 0o600 })
+    await chmod(f, 0o600)
+  }
+}
+const config = createConfigStore({ dataDir: DATA_DIR })
+await config.init()
+const push = createPush({ dataDir: DATA_DIR, getPlaces: () => config.places() })
 await push.init()
 const places = createPlacesStore({ dataDir: DATA_DIR })
 await places.init()
@@ -209,6 +224,15 @@ createServer(async (req, res) => {
         return await push.handleApi(req, res, url, readBody)
       } catch (e) {
         console.error('push api error', e)
+        res.writeHead(500, { 'content-type': 'application/json' }).end('{"error":"server"}')
+        return
+      }
+    }
+    if (url.pathname === '/api/config') {
+      try {
+        return await config.handleApi(req, res, url, readBody)
+      } catch (e) {
+        console.error('config api error', e)
         res.writeHead(500, { 'content-type': 'application/json' }).end('{"error":"server"}')
         return
       }

@@ -5,7 +5,11 @@ import { expect, test } from 'vitest'
 // @ts-expect-error plain JS module
 import { createPush } from '../server/push.mjs'
 
-const OFF = 25200 // Khon Kaen UTC+7
+const OFF = 25200 // Chiang Mai UTC+7
+const PLACES_FX = [
+  { id: 'chiangmai', name: 'Chiang Mai', nameTh: 'เชียงใหม่', lat: 18.79, lon: 98.98, tz: 'Asia/Bangkok', utcOffsetMin: 420 },
+  { id: 'bangkok', name: 'Bangkok', nameTh: 'กรุงเทพฯ', lat: 13.75, lon: 100.5, tz: 'Asia/Bangkok', utcOffsetMin: 420 },
+]
 const local = (ms: number) => new Date(ms + OFF * 1000).toISOString().slice(0, 16)
 
 interface Opts {
@@ -49,7 +53,7 @@ function fakeFetch(now: number, o: Opts = {}) {
   }
 }
 
-const subBody = (prefs: object, places = ['khonkaen'], endpoint = 'https://push.example/abc') => ({
+const subBody = (prefs: object, places = ['chiangmai'], endpoint = 'https://push.example/abc') => ({
   subscription: { endpoint, keys: { p256dh: 'k', auth: 'a' } },
   places,
   prefs,
@@ -62,6 +66,7 @@ async function setup(now: number, o: Opts = {}, prefs: object = { rain: true, al
   const clock = { t: now }
   const push = createPush({
     dataDir: dir,
+    getPlaces: () => PLACES_FX,
     now: () => clock.t,
     fetchJson: (u: string) => fakeFetch(clock.t, o)(u),
     sendFn: async (_sub: unknown, payload: any) => { sent.push({ payload }) },
@@ -71,13 +76,13 @@ async function setup(now: number, o: Opts = {}, prefs: object = { rain: true, al
   return { push, sent, dir, clock, o }
 }
 
-const NOON_ICT = Date.parse('2026-10-03T05:00:00Z') // 12:00 in Khon Kaen
+const NOON_ICT = Date.parse('2026-10-03T05:00:00Z') // 12:00 in Chiang Mai
 
 test('rain soon pushes once, then is deduped', async () => {
   const { push, sent } = await setup(NOON_ICT, { precip: [0, 0, 0.6, 0.8, 0, 0, 0, 0] }, { rain: true })
   expect(await push.tick()).toBe(1)
   expect(sent[0].payload.body).toMatch(/Rain in about \d+ min/)
-  expect(sent[0].payload.title).toBe('Khon Kaen')
+  expect(sent[0].payload.title).toBe('Chiang Mai')
   expect(await push.tick()).toBe(0)
 })
 
@@ -114,6 +119,7 @@ test('expired subscriptions (410) are removed', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'ts-push-'))
   const push = createPush({
     dataDir: dir,
+    getPlaces: () => PLACES_FX,
     now: () => NOON_ICT,
     fetchJson: fakeFetch(NOON_ICT, { precip: [0, 0, 0.9, 0, 0, 0, 0, 0] }),
     sendFn: async () => { throw Object.assign(new Error('gone'), { statusCode: 410 }) },
@@ -128,26 +134,26 @@ test('expired subscriptions (410) are removed', async () => {
 test('subscribe validates input and persists with private permissions', async () => {
   const { push, dir } = await setup(NOON_ICT)
   expect(await push.subscribe({ subscription: { endpoint: 'http://insecure', keys: { p256dh: 'k', auth: 'a' } } })).toBeNull()
-  const e = await push.subscribe(subBody({ rain: true }, ['khonkaen', 'nowhere', 'bangkok'], 'https://push.example/zzz'))
-  expect(e.places).toEqual(['khonkaen', 'bangkok'])
+  const e = await push.subscribe(subBody({ rain: true }, ['chiangmai', 'nowhere', 'bangkok'], 'https://push.example/zzz'))
+  expect(e.places).toEqual(['chiangmai', 'bangkok'])
   const saved = JSON.parse(await readFile(join(dir, 'push.json'), 'utf8'))
   expect(saved.vapid.publicKey.length).toBeGreaterThan(40)
   expect(Object.keys(saved.subs)).toHaveLength(2)
   expect(((await stat(join(dir, 'push.json'))).mode & 0o777).toString(8)).toBe('600')
 })
 
-const T_0905 = Date.parse('2026-10-03T02:05:00Z') // 09:05 in Khon Kaen
+const T_0905 = Date.parse('2026-10-03T02:05:00Z') // 09:05 in Chiang Mai
 
 test('hourly update: sends on the hour window with a replace-tag, once per hour', async () => {
   const { push, sent, clock } = await setup(T_0905, { rainP: 0.7 }, { hourly: true })
   expect(await push.tick()).toBe(1)
-  expect(sent[0].payload.title).toBe('Khon Kaen · 30°')
-  expect(sent[0].payload.tag).toBe('hourly-khonkaen')
+  expect(sent[0].payload.title).toBe('Chiang Mai · 30°')
+  expect(sent[0].payload.tag).toBe('hourly-chiangmai')
   expect(sent[0].payload.body).toContain('70% chance of rain around')
   expect(await push.tick()).toBe(0) // same hour
   clock.t += 3600_000
   expect(await push.tick()).toBe(1) // next hour
-  expect(sent[1].payload.tag).toBe('hourly-khonkaen')
+  expect(sent[1].payload.tag).toBe('hourly-chiangmai')
 })
 
 test('hourly update: not outside 07:00-22:59 local or late in the hour', async () => {
@@ -168,7 +174,7 @@ test('hourly update, only-when-changed: first send, then quiet until something m
   o.temp = 34 // +4 degrees
   expect(await push.tick()).toBe(1)
   expect(sent).toHaveLength(2)
-  expect(sent[1].payload.title).toBe('Khon Kaen · 34°')
+  expect(sent[1].payload.title).toBe('Chiang Mai · 34°')
 })
 
 test('hourly update in Thai includes the Thai weather label', async () => {

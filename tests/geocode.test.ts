@@ -15,8 +15,8 @@ test('a hit without a timezone is unusable', () => {
 })
 
 test('manual and geocoded records both pass the server validator', () => {
-  const m = manualRecord('  Sujatha Nagar ', 17.5512, 80.6234, 'Asia/Kolkata')
-  expect(m.name).toBe('Sujatha Nagar')
+  const m = manualRecord('  Old Town ', 19.0512, 72.8234, 'Asia/Kolkata')
+  expect(m.name).toBe('Old Town')
   expect(cleanPlace(m)).not.toBeNull()
   expect(cleanPlace(manualRecord('West', -33.9, -118.4, 'America/Los_Angeles'))).not.toBeNull() // negative coords make a valid id
   const g = resultToRecord({ id: 9, name: 'Z', latitude: 1, longitude: 2, timezone: 'UTC' })!
@@ -29,4 +29,12 @@ test('rankResults: prefix matches first, then population; ignores case and diacr
   expect(rankResults('chiang', noisy).map((r) => r.name)).toEqual(['Chiang Mai', 'Chiang Rai', 'Chianga', 'Jiangmen', 'Gujiang'])
   expect(rankResults('HYDERABAD', [g(1, 'Hyderābād', 1_921_275), g(2, 'Hyderabad', 6_993_262)]).map((r) => r.id)).toEqual([2, 1])
   expect(rankResults('x', [])).toEqual([])
+})
+
+test('id prefix: c = added place, p = configured city; both accepted by the right validator', () => {
+  const asConfig = resultToRecord({ id: 7, name: 'Lisbon', latitude: 38.7, longitude: -9.1, timezone: 'Europe/Lisbon' }, 'p')!
+  expect(asConfig.id).toBe('p:g7')
+  expect(cleanPlace(asConfig)).toBeNull() // the places store only takes c: ids
+  expect(cleanPlace(asConfig, /^[\w][\w:.-]{0,39}$/)).not.toBeNull()
+  expect(manualRecord('Home', 1.5, -2.25, 'UTC', 'p').id).toBe('p:m1.500_-2.250')
 })

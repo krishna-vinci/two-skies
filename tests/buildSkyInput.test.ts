@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest'
 import { buildSkyInput } from '../src/sky/buildSkyInput'
-import { placeById } from '../src/lib/places'
+import { chiangmai, mumbai } from './fixtures'
 import type { Weather } from '../src/lib/types'
 
 const day = 1_759_461_000_000 // 2025-10-03T03:10Z ~ 08:40 IST
@@ -14,7 +14,7 @@ const weather: Weather = {
 }
 
 test('builds input from weather + time', () => {
-  const i = buildSkyInput(weather, placeById('kothagudem'), new Date(day))
+  const i = buildSkyInput(weather, mumbai, new Date(day))
   expect(i.code).toBe(63)
   expect(i.isDay).toBe(true)
   expect(i.cloudCover).toBe(80)
@@ -24,7 +24,7 @@ test('builds input from weather + time', () => {
 })
 
 test('falls back to an astronomy-only clear sky without weather', () => {
-  const i = buildSkyInput(undefined, placeById('khonkaen'), new Date('2026-10-03T05:00:00Z'))
+  const i = buildSkyInput(undefined, chiangmai, new Date('2026-10-03T05:00:00Z'))
   expect(i.code).toBe(0)
   expect(i.cloudCover).toBe(0)
   expect(i.sunProgress).toBeGreaterThan(0.4)

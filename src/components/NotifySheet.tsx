@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Sheet } from './Sheet'
 import { placeLabels, useI18n, type Key } from '../lib/i18n'
-import { PLACES } from '../lib/places'
+import { useConfig } from '../lib/config'
 import { disablePush, enablePush, loadSettings, pushSupport, savePush, sendTest, type PushSettings } from '../lib/push'
 
 function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
@@ -17,6 +17,7 @@ function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) =
 
 export function NotifySheet({ defaultPlaces, onClose }: { defaultPlaces: string[]; onClose: () => void }) {
   const { t, lang } = useI18n()
+  const { ourCities } = useConfig()
   const support = pushSupport()
   const [settings, setSettings] = useState<PushSettings>({
     places: defaultPlaces,
@@ -92,7 +93,7 @@ export function NotifySheet({ defaultPlaces, onClose }: { defaultPlaces: string[
           <div className="mt-4">
             <div className="mb-2 text-[11px] uppercase tracking-[0.18em] text-white/60">{t('notifyPlaces')}</div>
             <div className="flex flex-wrap gap-2">
-              {PLACES.map((p) => {
+              {ourCities.map((p) => {
                 const on = settings.places.includes(p.id)
                 return (
                   <button

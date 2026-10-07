@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest'
 import { normalize, buildForecastUrl, buildAirUrl, buildEnsembleUrl } from '../src/lib/openMeteo'
 import { ensembleRainProb } from '../shared/rules.js'
-import { placeById } from '../src/lib/places'
+import { chiangmai } from './fixtures'
 
 const forecast = {
   utc_offset_seconds: 19800,
@@ -63,11 +63,11 @@ test('normalize tolerates missing air', () => {
   expect(normalize(forecast, null, 1).air).toBeNull()
 })
 test('forecast url asks for 15-minute rain', () => {
-  expect(buildForecastUrl(placeById('khonkaen'))).toContain('minutely_15=precipitation')
+  expect(buildForecastUrl(chiangmai)).toContain('minutely_15=precipitation')
 })
 test('urls carry coordinates and timezone=auto', () => {
-  const p = placeById('khonkaen')
-  expect(buildForecastUrl(p)).toContain('latitude=16.44')
+  const p = chiangmai
+  expect(buildForecastUrl(p)).toContain('latitude=18.7904')
   expect(buildForecastUrl(p)).toContain('timezone=auto')
   expect(buildAirUrl(p)).toContain('air-quality-api.open-meteo.com')
 })

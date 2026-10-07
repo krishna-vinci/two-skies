@@ -3,7 +3,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 const MAX_PLACES = 30
-const ID_RE = /^c:[\w.-]{1,40}$/
+const ADDED_ID = /^c:[\w.-]{1,40}$/ // browse-only places added on the Places page
 
 const validTz = (tz) => {
   try {
@@ -13,11 +13,11 @@ const validTz = (tz) => {
     return false
   }
 }
-const str = (v, max) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : undefined)
+export const str = (v, max) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : undefined)
 
-/** Returns a clean record or null. */
-export function cleanPlace(p) {
-  if (!p || typeof p.id !== 'string' || !ID_RE.test(p.id)) return null
+/** Returns a clean record or null. `idRe` decides which ids are acceptable. */
+export function cleanPlace(p, idRe = ADDED_ID) {
+  if (!p || typeof p.id !== 'string' || !idRe.test(p.id)) return null
   const name = str(p.name, 60)
   const lat = Number(p.lat)
   const lon = Number(p.lon)
@@ -26,7 +26,7 @@ export function cleanPlace(p) {
   return {
     id: p.id,
     name,
-    nameLocal: str(p.nameLocal, 60),
+    nameTh: str(p.nameTh, 60),
     subtitle: str(p.subtitle, 80),
     lat: Math.round(lat * 1e4) / 1e4,
     lon: Math.round(lon * 1e4) / 1e4,
@@ -52,7 +52,7 @@ export function createPlacesStore({ dataDir }) {
   async function init() {
     try {
       const raw = JSON.parse(await readFile(file, 'utf8'))
-      list = (Array.isArray(raw) ? raw : []).map(cleanPlace).filter(Boolean)
+      list = (Array.isArray(raw) ? raw : []).map((p) => cleanPlace(p)).filter(Boolean)
     } catch {
       /* first run */
     }

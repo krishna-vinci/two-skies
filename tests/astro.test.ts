@@ -1,11 +1,11 @@
 import { expect, test } from 'vitest'
 import { sunAltitude, sunProgress, moonPhase } from '../src/lib/astro'
 
-test('sun high at local noon in Kothagudem (early Oct)', () => {
-  expect(sunAltitude(new Date('2026-10-03T06:30:00Z'), 17.55, 80.62)).toBeGreaterThan(60)
+test('sun high at local noon in Mumbai (early Oct)', () => {
+  expect(sunAltitude(new Date('2026-10-03T06:30:00Z'), 19.076, 72.878)).toBeGreaterThan(60)
 })
 test('sun far below horizon at local midnight', () => {
-  expect(sunAltitude(new Date('2026-10-02T18:30:00Z'), 17.55, 80.62)).toBeLessThan(-40)
+  expect(sunAltitude(new Date('2026-10-02T18:30:00Z'), 19.076, 72.878)).toBeLessThan(-40)
 })
 test('sunProgress clamps and interpolates', () => {
   expect(sunProgress(new Date(50), 100, 200)).toBe(0)

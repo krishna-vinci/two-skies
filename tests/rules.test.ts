@@ -56,7 +56,7 @@ test('messages: en and th render, level clamps', () => {
   expect(nowcastText({ kind: 'soon', minutes: 75 }, 'en')).toBe('Rain in about 1 h 15 min')
   expect(nowcastText({ kind: 'soon', minutes: 25 }, 'th')).toContain('25 นาที')
   expect(weatherLabel(63, 'th')).toBe('ฝนตก')
-  expect(morningText({ placeName: 'Khon Kaen', temp: 28, code: 2, hi: 33, lo: 24, rainPct: 40 }, 'en').body).toContain('Partly cloudy')
+  expect(morningText({ placeName: 'Chiang Mai', temp: 28, code: 2, hi: 33, lo: 24, rainPct: 40 }, 'en').body).toContain('Partly cloudy')
 })
 
 import { hourlyChanged, hourlyDigest, kindOfCode, rainChance } from '../shared/rules.js'
@@ -103,8 +103,8 @@ test('hourlyChanged: only meaningful changes trigger a send', () => {
 
 test('hourly text composes label, feels-like, rain chance and alert', () => {
   const rc = { p: 0.65, time: Date.parse('2026-10-03T08:00:00Z') }
-  const t = hourlyText({ placeName: 'Khon Kaen', temp: 31, feels: 37, code: 2, rainRc: rc, offMin: 420, alertTitle: 'Extreme heat' }, 'en')
-  expect(t.title).toBe('Khon Kaen · 31°')
+  const t = hourlyText({ placeName: 'Chiang Mai', temp: 31, feels: 37, code: 2, rainRc: rc, offMin: 420, alertTitle: 'Extreme heat' }, 'en')
+  expect(t.title).toBe('Chiang Mai · 31°')
   expect(t.body).toBe('Partly cloudy · feels 37° · 65% chance of rain around 15:00 · Extreme heat')
   expect(rainChanceText(rc, 420, 'th')).toBe('โอกาสฝน 65% ราว 15:00 น.')
   expect(hourlyText({ placeName: 'X', temp: 20, feels: 20, code: 0, rainRc: { p: 0.1, time: 0 }, offMin: 0 }, 'en').body).toBe('Clear sky')

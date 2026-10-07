@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { Sheet } from './Sheet'
 import { localTime, formatDiff } from '../lib/couple'
 import { useNow } from '../lib/hooks'
-import { AWAKE, awakeWindows, dayBarGradient, nextSunEvents, overlap, togetherState, type Win } from '../lib/together'
+import { awakeWindows, dayBarGradient, nextSunEvents, overlap, togetherState, type Awake, type Win } from '../lib/together'
 import { placeLabels, useI18n } from '../lib/i18n'
 import type { Place } from '../lib/types'
 import { useWeather } from '../lib/useWeather'
@@ -26,13 +26,13 @@ function gaps(awake: Win[], a: number, b: number): Win[] {
   return out
 }
 
-function Bar({ place, now, start, end, shared }: { place: Place; now: number; start: number; end: number; shared: Win[] }) {
+function Bar({ place, now, start, end, shared, awake }: { place: Place; now: number; start: number; end: number; shared: Win[]; awake: Awake }) {
   const { lang } = useI18n()
   const bucket = Math.floor(now / 600_000)
   const gradient = useMemo(() => dayBarGradient(place, start, end), [place, bucket]) // eslint-disable-line react-hooks/exhaustive-deps
   const pct = (t: number) => `${((Math.min(end, Math.max(start, t)) - start) / (end - start)) * 100}%`
   const width = (a: number, b: number) => `${((Math.min(end, b) - Math.max(start, a)) / (end - start)) * 100}%`
-  const asleep = gaps(awakeWindows(place, now), start, end)
+  const asleep = gaps(awakeWindows(place, now, awake), start, end)
 
   const ticks: number[] = []
   const off = place.utcOffsetMin * 60_000
@@ -65,38 +65,38 @@ function Bar({ place, now, start, end, shared }: { place: Place; now: number; st
   )
 }
 
-export function TogetherSheet({ him, her, onClose }: { him: Place; her: Place; onClose: () => void }) {
+export function TogetherSheet({ a, b, awake, onClose }: { a: Place; b: Place; awake: Awake; onClose: () => void }) {
   const { t, lang } = useI18n()
   const nowDate = useNow(30_000)
   const now = nowDate.getTime()
-  const a = useWeather(him).data
-  const b = useWeather(her).data
+  const wa = useWeather(a).data
+  const wb = useWeather(b).data
 
   const start = now - BEFORE
   const end = start + SPAN
-  const shared = useMemo(() => overlap(awakeWindows(him, now), awakeWindows(her, now)), [him, her, now])
-  const st = togetherState(now, him, her)
-  const hisName = placeLabels(him, lang).title
-  const herName = placeLabels(her, lang).title
+  const shared = useMemo(() => overlap(awakeWindows(a, now, awake), awakeWindows(b, now, awake)), [a, b, now, awake])
+  const st = togetherState(now, a, b, awake)
+  const aName = placeLabels(a, lang).title
+  const bName = placeLabels(b, lang).title
   const dur = formatDiff(st.minutes, lang)
 
   const status =
     st.kind === 'both'
       ? t('bothAwake', { dur })
-      : `${st.kind === 'him-asleep' ? t('asleepOne', { name: hisName }) : st.kind === 'her-asleep' ? t('asleepOne', { name: herName }) : t('bothAsleep')} · ${t('nextTogether', { dur })}`
+      : `${st.kind === 'a-asleep' ? t('asleepOne', { name: aName }) : st.kind === 'b-asleep' ? t('asleepOne', { name: bName }) : t('bothAsleep')} · ${t('nextTogether', { dur })}`
 
-  const events = nextSunEvents([{ place: him, weather: a }, { place: her, weather: b }], now)
+  const events = nextSunEvents([{ place: a, weather: wa }, { place: b, weather: wb }], now)
 
   return (
     <Sheet title={t('together')} subtitle={t('togetherSub')} onClose={onClose}>
       <div className={`rounded-2xl p-4 text-[15px] font-light ${st.kind === 'both' ? 'bg-emerald-400/20' : 'bg-white/10'}`}>{status}</div>
 
       <div className="mt-5 space-y-3">
-        <Bar place={him} now={now} start={start} end={end} shared={shared} />
-        <Bar place={her} now={now} start={start} end={end} shared={shared} />
+        <Bar place={a} now={now} start={start} end={end} shared={shared} awake={awake} />
+        <Bar place={b} now={now} start={start} end={end} shared={shared} awake={awake} />
       </div>
       <p className="mt-2 text-xs font-light text-white/55">
-        {t('awakeAssume', { from: `${hh(AWAKE.from)}:00`, to: `${hh(AWAKE.to)}:00` })}
+        {t('awakeAssume', { from: `${hh(awake.from)}:00`, to: `${hh(awake.to)}:00` })}
       </p>
 
       {events.length > 0 && (
