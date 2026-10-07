@@ -45,7 +45,7 @@ export function manualRecord(name: string, lat: number, lon: number, tz: string,
   return { id: `${prefix}:m${lat.toFixed(3)}_${lon.toFixed(3)}`, name: name.trim(), lat, lon, tz }
 }
 
-export async function searchCities(q: string, lang: 'en' | 'th', signal?: AbortSignal, prefix: IdPrefix = 'c'): Promise<StoredPlace[]> {
+export async function searchCities(q: string, lang: string, signal?: AbortSignal, prefix: IdPrefix = 'c'): Promise<StoredPlace[]> {
   const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=40&language=${lang}`
   const r = await fetch(url, { signal })
   if (!r.ok) throw new Error(`geocoding ${r.status}`)
@@ -66,20 +66,19 @@ export async function resolveTz(lat: number, lon: number): Promise<string> {
 }
 
 /**
- * Search shows names in the UI language, but we store the English name plus the Thai
- * name so the place reads right in either language later. Falls back to the record as is.
+ * Search shows names in the UI language, but we store the English name as the default so a
+ * city reads sensibly everywhere. Other languages are looked up on demand (see placeNames.ts).
  */
-export async function withBothNames(rec: StoredPlace): Promise<StoredPlace> {
+export async function withEnglishName(rec: StoredPlace): Promise<StoredPlace> {
   const m = rec.id.match(/:g(\d+)$/)
   if (!m) return rec
-  const get = async (lang: string) => {
-    const r = await fetch(`https://geocoding-api.open-meteo.com/v1/get?id=${m[1]}&language=${lang}`)
-    if (!r.ok) throw new Error(`geocoding ${r.status}`)
-    return ((await r.json()) as { name?: string }).name
-  }
   try {
-    const [en, th] = await Promise.all([get('en'), get('th')])
-    return { ...rec, name: en ?? rec.name, nameTh: th && th !== en ? th : undefined }
+    const r = await fetch(`https://geocoding-api.open-meteo.com/v1/get?id=${m[1]}&language=en`)
+    if (!r.ok) throw new Error(`geocoding ${r.status}`)
+    const j = (await r.json()) as { name?: string; admin1?: string; country?: string }
+    if (!j.name) return rec
+    const subtitle = [j.admin1, j.country].filter((x) => x && x !== j.name).join(', ') || undefined
+    return { ...rec, name: j.name, subtitle }
   } catch {
     return rec
   }

@@ -15,6 +15,22 @@ const validTz = (tz) => {
 }
 export const str = (v, max) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : undefined)
 
+/** { th: '...', ja: '...' }: short strings keyed by language code. A legacy `nameTh` becomes names.th. */
+function cleanNames(names, legacyTh) {
+  const out = {}
+  if (names && typeof names === 'object') {
+    for (const [k, v] of Object.entries(names).slice(0, 30)) {
+      if (/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/.test(k)) {
+        const s = str(v, 60)
+        if (s) out[k] = s
+      }
+    }
+  }
+  const th = str(legacyTh, 60)
+  if (th && !out.th) out.th = th
+  return Object.keys(out).length ? out : undefined
+}
+
 /** Returns a clean record or null. `idRe` decides which ids are acceptable. */
 export function cleanPlace(p, idRe = ADDED_ID) {
   if (!p || typeof p.id !== 'string' || !idRe.test(p.id)) return null
@@ -26,7 +42,7 @@ export function cleanPlace(p, idRe = ADDED_ID) {
   return {
     id: p.id,
     name,
-    nameTh: str(p.nameTh, 60),
+    names: cleanNames(p.names, p.nameTh),
     subtitle: str(p.subtitle, 80),
     lat: Math.round(lat * 1e4) / 1e4,
     lon: Math.round(lon * 1e4) / 1e4,

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { CitySearch } from './CitySearch'
 import { Close, Pin } from './icons'
-import { placeLabels, useI18n } from '../lib/i18n'
+import { useI18n } from '../lib/i18n'
 import type { SideConfig, StoredPlace } from '../lib/types'
 
 const MAX = 3
@@ -23,7 +23,7 @@ export function SideEditor({
   takenIds: Set<string>
   autoFocusSearch?: boolean
 }) {
-  const { t, lang } = useI18n()
+  const { t, label } = useI18n()
   const [adding, setAdding] = useState(value.places.length === 0)
   const [note, setNote] = useState('')
   const ids = new Set(value.places.map((p) => p.id))
@@ -59,7 +59,7 @@ export function SideEditor({
 
       <ul className="mt-3 space-y-1">
         {value.places.map((p, i) => {
-          const l = placeLabels({ ...p, utcOffsetMin: 0 }, lang)
+          const l = label(p)
           return (
             <li key={p.id} className="flex items-center gap-2 rounded-2xl bg-white/8 px-3 py-2.5">
               <span className="shrink-0 text-white/70"><Pin size={16} /></span>

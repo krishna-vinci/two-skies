@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { animate } from 'motion/react'
+import { relativeAgo } from '../../shared/format.js'
 
 export function useNow(intervalMs = 30_000) {
   const [now, setNow] = useState(() => new Date())
@@ -23,10 +24,8 @@ export function useTween(value: number | undefined, duration = 1.1) {
   return shown
 }
 
-/** Minutes since `ms` as a translation key + vars (caller translates). */
-export function agoParts(ms: number, now: number): { key: 'justNow' | 'minAgo' | 'hourAgo'; n: number } {
+/** "5 min ago" in the language, or `justNow` for under a minute. */
+export function agoText(ms: number, now: number, lang: string, justNow: string): string {
   const m = Math.max(0, Math.round((now - ms) / 60_000))
-  if (m < 1) return { key: 'justNow', n: 0 }
-  if (m < 60) return { key: 'minAgo', n: m }
-  return { key: 'hourAgo', n: Math.round(m / 60) }
+  return m < 1 ? justNow : relativeAgo(m, lang)
 }

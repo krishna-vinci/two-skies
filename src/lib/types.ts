@@ -5,8 +5,8 @@ export interface Place {
   id: string
   /** English / Latin name */
   name: string
-  /** Thai name, when known (shown instead of `name` when the UI is in Thai) */
-  nameTh?: string
+  /** Names in other languages, by language code ({ th: 'เชียงใหม่' }); `name` is the default */
+  names?: Record<string, string>
   subtitle?: string
   lat: number
   lon: number
@@ -18,7 +18,7 @@ export interface Place {
 export interface StoredPlace {
   id: string
   name: string
-  nameTh?: string
+  names?: Record<string, string>
   subtitle?: string
   lat: number
   lon: number

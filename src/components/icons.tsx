@@ -95,7 +95,7 @@ export const Swap = ({ size = 16 }: { size?: number }) => (
 )
 
 export const Chevron = ({ size = 20 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+  <svg className="rtl:rotate-180" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <path d="M15 5l-7 7 7 7" />
   </svg>
 )

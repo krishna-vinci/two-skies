@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Sheet } from './Sheet'
-import { placeLabels, useI18n, type Key } from '../lib/i18n'
+import { useI18n, type Key } from '../lib/i18n'
 import { useConfig } from '../lib/config'
 import { disablePush, enablePush, loadSettings, pushSupport, savePush, sendTest, type PushSettings } from '../lib/push'
 
 function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
-    <button role="switch" aria-checked={on} onClick={() => onChange(!on)} className="flex w-full items-center justify-between gap-4 py-3 text-left text-[15px] font-light">
+    <button role="switch" aria-checked={on} onClick={() => onChange(!on)} className="flex w-full items-center justify-between gap-4 py-3 text-start text-[15px] font-light">
       <span>{label}</span>
       <span className={`relative h-6 w-11 shrink-0 rounded-full transition ${on ? 'bg-emerald-400/80' : 'bg-white/20'}`}>
         <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${on ? 'left-[22px]' : 'left-0.5'}`} />
@@ -16,7 +16,7 @@ function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) =
 }
 
 export function NotifySheet({ defaultPlaces, onClose }: { defaultPlaces: string[]; onClose: () => void }) {
-  const { t, lang } = useI18n()
+  const { t, lang, label } = useI18n()
   const { ourCities } = useConfig()
   const support = pushSupport()
   const [settings, setSettings] = useState<PushSettings>({
@@ -84,7 +84,7 @@ export function NotifySheet({ defaultPlaces, onClose }: { defaultPlaces: string[
             <Toggle on={settings.prefs.morning} onChange={(v) => update({ ...settings, prefs: { ...settings.prefs, morning: v } })} label={t('notifyMorning')} />
             <Toggle on={settings.prefs.hourly} onChange={(v) => update({ ...settings, prefs: { ...settings.prefs, hourly: v } })} label={t('notifyHourly')} />
             {settings.prefs.hourly && (
-              <div className="pl-4">
+              <div className="ps-4">
                 <Toggle on={settings.prefs.hourlyChanged} onChange={(v) => update({ ...settings, prefs: { ...settings.prefs, hourlyChanged: v } })} label={t('notifyHourlyChanged')} />
               </div>
             )}
@@ -102,7 +102,7 @@ export function NotifySheet({ defaultPlaces, onClose }: { defaultPlaces: string[
                     aria-pressed={on}
                     className={`rounded-full border px-3.5 py-1.5 text-sm font-light transition ${on ? 'border-white/60 bg-white/20' : 'border-white/20 bg-transparent text-white/70'}`}
                   >
-                    {placeLabels(p, lang).title}
+                    {label(p).title}
                   </button>
                 )
               })}

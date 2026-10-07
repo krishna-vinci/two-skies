@@ -1,5 +1,5 @@
 import type { Alert, Nowcast } from './rules.js'
-export type Lang = 'en' | 'th'
+export type Lang = string
 export function alertText(alert: Alert, lang: Lang): { title: string; body: string }
 export function nowcastText(nc: Nowcast, lang: Lang): string
 export function weatherLabel(code: number, lang: Lang): string

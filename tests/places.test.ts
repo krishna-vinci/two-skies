@@ -55,3 +55,12 @@ test('store: add, list, update, remove, persist, and cap', async () => {
   for (let i = 0; i < 30; i++) await call(b, 'POST', '/api/places/add', { place: { ...good, id: `c:g${i}` } })
   expect((await call(b, 'POST', '/api/places/add', { place: { ...good, id: 'c:g99' } })).status).toBe(409)
 })
+
+test('cleanPlace: names map is validated and a legacy nameTh migrates into it', () => {
+  const p = cleanPlace({ ...good, names: { th: 'เชียงใหม่', ja: '\u30c1\u30a7\u30f3\u30de\u30a4', 'bad key!': 'x', fr: '   ' } })
+  expect(p.names).toEqual({ th: 'เชียงใหม่', ja: '\u30c1\u30a7\u30f3\u30de\u30a4' })
+  expect(cleanPlace({ ...good, nameTh: 'เชียงใหม่' }).names).toEqual({ th: 'เชียงใหม่' })
+  expect(cleanPlace({ ...good, nameTh: 'a', names: { th: 'b' } }).names).toEqual({ th: 'b' }) // explicit wins
+  expect(cleanPlace(good).names).toBeUndefined()
+  expect(cleanPlace({ ...good, nameTh: 'x' }).nameTh).toBeUndefined() // legacy field is not kept
+})

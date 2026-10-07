@@ -3,7 +3,7 @@ import { Sheet } from './Sheet'
 import { localTime, formatDiff } from '../lib/couple'
 import { useNow } from '../lib/hooks'
 import { awakeWindows, dayBarGradient, nextSunEvents, overlap, togetherState, type Awake, type Win } from '../lib/together'
-import { placeLabels, useI18n } from '../lib/i18n'
+import { useI18n } from '../lib/i18n'
 import type { Place } from '../lib/types'
 import { useWeather } from '../lib/useWeather'
 
@@ -27,7 +27,7 @@ function gaps(awake: Win[], a: number, b: number): Win[] {
 }
 
 function Bar({ place, now, start, end, shared, awake }: { place: Place; now: number; start: number; end: number; shared: Win[]; awake: Awake }) {
-  const { lang } = useI18n()
+  const { label } = useI18n()
   const bucket = Math.floor(now / 600_000)
   const gradient = useMemo(() => dayBarGradient(place, start, end), [place, bucket]) // eslint-disable-line react-hooks/exhaustive-deps
   const pct = (t: number) => `${((Math.min(end, Math.max(start, t)) - start) / (end - start)) * 100}%`
@@ -38,14 +38,14 @@ function Bar({ place, now, start, end, shared, awake }: { place: Place; now: num
   const off = place.utcOffsetMin * 60_000
   for (let t = Math.ceil((start + off) / (4 * HOUR)) * 4 * HOUR - off; t < end; t += 4 * HOUR) ticks.push(t)
 
-  const labels = placeLabels(place, lang)
+  const labels = label(place)
   return (
     <div>
       <div className="flex items-baseline justify-between text-sm font-light">
         <span>{labels.title}</span>
         <span className="tabular-nums text-white/70">{localTime(new Date(now), place)}</span>
       </div>
-      <div className="relative mt-1.5 h-10 overflow-hidden rounded-xl" style={{ background: gradient }}>
+      <div dir="ltr" className="relative mt-1.5 h-10 overflow-hidden rounded-xl" style={{ background: gradient }}>
         {asleep.map((g) => (
           <div key={g.start} className="absolute inset-y-0 bg-black/45" style={{ left: pct(g.start), width: width(g.start, g.end) }} />
         ))}
@@ -54,7 +54,7 @@ function Bar({ place, now, start, end, shared, awake }: { place: Place; now: num
         ))}
         <div className="absolute inset-y-0 w-0.5 bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]" style={{ left: pct(now) }} />
       </div>
-      <div className="relative mt-1 h-4 text-[10px] tabular-nums text-white/60">
+      <div dir="ltr" className="relative mt-1 h-4 text-[10px] tabular-nums text-white/60">
         {ticks.map((t) => (
           <span key={t} className="absolute -translate-x-1/2" style={{ left: pct(t) }}>
             {hh(new Date(t + off).getUTCHours())}
@@ -66,7 +66,7 @@ function Bar({ place, now, start, end, shared, awake }: { place: Place; now: num
 }
 
 export function TogetherSheet({ a, b, awake, onClose }: { a: Place; b: Place; awake: Awake; onClose: () => void }) {
-  const { t, lang } = useI18n()
+  const { t, lang, label } = useI18n()
   const nowDate = useNow(30_000)
   const now = nowDate.getTime()
   const wa = useWeather(a).data
@@ -76,8 +76,8 @@ export function TogetherSheet({ a, b, awake, onClose }: { a: Place; b: Place; aw
   const end = start + SPAN
   const shared = useMemo(() => overlap(awakeWindows(a, now, awake), awakeWindows(b, now, awake)), [a, b, now, awake])
   const st = togetherState(now, a, b, awake)
-  const aName = placeLabels(a, lang).title
-  const bName = placeLabels(b, lang).title
+  const aName = label(a).title
+  const bName = label(b).title
   const dur = formatDiff(st.minutes, lang)
 
   const status =
@@ -104,7 +104,7 @@ export function TogetherSheet({ a, b, awake, onClose }: { a: Place; b: Place; aw
           {events.map((e) => (
             <li key={e.place.id + e.type}>
               {t(e.type === 'sunrise' ? 'sunriseIn' : 'sunsetIn', {
-                place: placeLabels(e.place, lang).title,
+                place: label(e.place).title,
                 dur: formatDiff(Math.max(1, Math.round((e.time - now) / 60_000)), lang),
               })}
             </li>

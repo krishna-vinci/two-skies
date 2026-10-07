@@ -2,6 +2,7 @@
 import webpush from 'web-push'
 import { chmod, mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { isLang } from '../shared/i18n.js'
 import { alertsFor, ensembleRainProb, hourlyChanged, hourlyDigest, nowcast, rainChance } from '../shared/rules.js'
 import { alertText, hourlyText, morningText, nowcastText, testText } from '../shared/messages.js'
 
@@ -64,14 +65,31 @@ export async function fetchSnapshot(place, fetchJson = getJson) {
   }
 }
 
-const placeTitle = (p, lang) => (lang === 'th' ? p.nameTh ?? p.name : p.name)
-
 /**
- * getPlaces(): the cities push alerts may watch ({ id, name, nameTh?, lat, lon, tz, utcOffsetMin }).
+ * getPlaces(): the cities push alerts may watch ({ id, name, names?, lat, lon, tz, utcOffsetMin }).
  * It is a function so a changed config takes effect without a restart.
  */
 export function createPush({ dataDir, getPlaces = () => [], fetchJson = getJson, now = () => Date.now(), sendFn } = {}) {
   const file = join(dataDir, 'push.json')
+  const nameCache = new Map()
+
+  /** City name in the subscriber's language: stored names, else the geocoder (cached), else the default name. */
+  async function placeName(place, lang) {
+    if (lang === 'en') return place.name
+    if (place.names?.[lang]) return place.names[lang]
+    const gid = place.id.match(/:g(\d+)$/)?.[1]
+    if (!gid) return place.name
+    const key = `${gid}:${lang}`
+    if (nameCache.has(key)) return nameCache.get(key)
+    try {
+      const j = await fetchJson(`https://geocoding-api.open-meteo.com/v1/get?id=${gid}&language=${encodeURIComponent(lang)}`)
+      const n = typeof j?.name === 'string' && j.name ? j.name : place.name
+      nameCache.set(key, n)
+      return n
+    } catch {
+      return place.name
+    }
+  }
   let state = { vapid: null, subs: {}, sent: {}, digests: {} }
   let saving = Promise.resolve()
 
@@ -132,7 +150,7 @@ export function createPush({ dataDir, getPlaces = () => [], fetchJson = getJson,
       sub: { endpoint: s.endpoint, keys: { p256dh: String(s.keys.p256dh), auth: String(s.keys.auth) } },
       places,
       prefs,
-      lang: b.lang === 'th' ? 'th' : 'en',
+      lang: isLang(b.lang) ? b.lang : 'en',
     }
   }
 
@@ -210,7 +228,7 @@ export function createPush({ dataDir, getPlaces = () => [], fetchJson = getJson,
         const place = cities.find((p) => p.id === id)
         const w = snaps[id]
         if (!place || !w) continue
-        const name = placeTitle(place, e.lang)
+        const name = await placeName(place, e.lang)
         const base = `${e.sub.endpoint}|${id}`
 
         if (e.prefs.rain) {

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { CoupleChip } from './components/CoupleChip'
 import { DebugPanel, isDebug } from './components/DebugPanel'
 import { DetailView, type Rect } from './components/Detail/DetailView'
+import { LanguageSheet } from './components/LanguageSheet'
 import { NotifySheet } from './components/NotifySheet'
 import { PlacesPage } from './components/PlacesPage'
 import { PullIndicator } from './components/PullIndicator'
@@ -11,7 +12,7 @@ import { SkyPanel } from './components/SkyPanel'
 import { TogetherSheet } from './components/TogetherSheet'
 import { WelcomeScreen } from './components/WelcomeScreen'
 import { useConfig, type SideView } from './lib/config'
-import { placeLabels, useI18n } from './lib/i18n'
+import { useI18n } from './lib/i18n'
 import { usePlaces } from './lib/placesStore'
 import type { Side } from './lib/types'
 import { usePullToRefresh } from './lib/usePullToRefresh'
@@ -25,6 +26,7 @@ type Overlay =
   | { kind: 'settings' }
   | { kind: 'together' }
   | { kind: 'notify' }
+  | { kind: 'language' }
 const SEL_KEY = 'ts.sel2'
 const LEGACY_SEL_KEY = 'ts.selection' // { him, her } from before the sides were configurable
 const FULL: Rect = { top: 0, left: 0, right: 0, bottom: 0 }
@@ -63,7 +65,7 @@ export default function App() {
 }
 
 function Home() {
-  const { lang } = useI18n()
+  const { label } = useI18n()
   const { sides, awake } = useConfig()
   const { byId } = usePlaces()
   const [sel, setSel] = useState<Selection>(() => loadSelection(sides))
@@ -108,7 +110,7 @@ function Home() {
   }
   const nextName = (s: SideView) => {
     const i = s.places.findIndex((p) => p.id === sel[s.id])
-    return placeLabels(s.places[(i + 1) % s.places.length], lang).title
+    return label(s.places[(i + 1) % s.places.length]).title
   }
 
   const rectOf = (r: DOMRect): Rect => ({
@@ -131,7 +133,7 @@ function Home() {
           key={s.id}
           index={i}
           place={placeOf(s)}
-          label={s.label}
+          sideLabel={s.label}
           canSwitch={s.places.length > 1}
           nextName={nextName(s)}
           override={showDebug ? debug : null}
@@ -146,6 +148,7 @@ function Home() {
         onTogether={() => openOverlay({ kind: 'together' })}
         onSettings={() => openOverlay({ kind: 'settings' })}
         onPlaces={() => openOverlay({ kind: 'places' })}
+        onLanguage={() => openOverlay({ kind: 'language' })}
       />
 
       <AnimatePresence>
@@ -161,9 +164,11 @@ function Home() {
             case 'places':
               return <PlacesPage key={key} onOpenPlace={(p, r) => openOverlay({ kind: 'placeDetail', placeId: p.id, from: rectOf(r) })} onClose={closeOverlay} />
             case 'settings':
-              return <SettingsPage key={key} onOpenNotify={() => openOverlay({ kind: 'notify' })} onClose={closeOverlay} />
+              return <SettingsPage key={key} onOpenNotify={() => openOverlay({ kind: 'notify' })} onOpenLanguage={() => openOverlay({ kind: 'language' })} onClose={closeOverlay} />
             case 'together':
               return <TogetherSheet key={key} a={pa} b={pb} awake={awake} onClose={closeOverlay} />
+            case 'language':
+              return <LanguageSheet key={key} onClose={closeOverlay} />
             case 'notify':
               return <NotifySheet key={key} defaultPlaces={[pa.id, pb.id]} onClose={closeOverlay} />
           }

@@ -4,8 +4,8 @@ import { AlertStrip } from './AlertStrip'
 import { SkyCanvas } from './SkyCanvas'
 import { Swap, WeatherIcon } from './icons'
 import { localTime } from '../lib/couple'
-import { agoParts, useNow, useTween } from '../lib/hooks'
-import { placeLabels, useI18n } from '../lib/i18n'
+import { agoText, useNow, useTween } from '../lib/hooks'
+import { useI18n } from '../lib/i18n'
 import type { Place } from '../lib/types'
 import { useWeather } from '../lib/useWeather'
 import { describeWeather } from '../lib/weatherCodes'
@@ -17,7 +17,7 @@ interface Props {
   index: number
   nextName: string
   /** Optional name of this side (shown above the city) */
-  label?: string
+  sideLabel?: string
   /** Only show the swap button when the side has more than one city */
   canSwitch: boolean
   override?: SkyInput | null
@@ -25,8 +25,8 @@ interface Props {
   onSwitch: () => void
 }
 
-export function SkyPanel({ place, index, nextName, label, canSwitch, override, onOpen, onSwitch }: Props) {
-  const { t, lang } = useI18n()
+export function SkyPanel({ place, index, nextName, sideLabel, canSwitch, override, onOpen, onSwitch }: Props) {
+  const { t, lang, label } = useI18n()
   const q = useWeather(place)
   const w = q.data
   const sky = useSky(place, w, override)
@@ -35,8 +35,8 @@ export function SkyPanel({ place, index, nextName, label, canSwitch, override, o
   const kind = w ? describeWeather(w.current.code).kind : null
   const today = w?.daily[0]
   const stale = q.isError || (w && now.getTime() - q.dataUpdatedAt > 25 * 60_000)
-  const labels = placeLabels(place, lang)
-  const ago = agoParts(q.dataUpdatedAt, now.getTime())
+  const labels = label(place)
+  const ago = agoText(q.dataUpdatedAt, now.getTime(), lang, t('justNow'))
 
   return (
     <motion.section
@@ -67,12 +67,12 @@ export function SkyPanel({ place, index, nextName, label, canSwitch, override, o
                 transition={{ duration: 0.3 }}
                 className="text-soft-shadow min-w-0"
               >
-                {label && <div className="mb-1 truncate text-[11px] uppercase tracking-[0.2em] text-white/70">{label}</div>}
+                {sideLabel && <div className="mb-1 truncate text-[11px] uppercase tracking-[0.2em] text-white/70">{sideLabel}</div>}
                 <h2 className="truncate text-[28px] font-light leading-tight tracking-tight md:text-4xl">{labels.title}</h2>
                 <p className="mt-1 text-[15px] font-light leading-tight text-white/80">{labels.sub || ' '}</p>
               </motion.div>
             </AnimatePresence>
-            <div className="text-soft-shadow shrink-0 text-right">
+            <div className="text-soft-shadow shrink-0 text-end">
               <div className="text-[28px] font-extralight tabular-nums leading-none md:text-4xl">{localTime(now, place)}</div>
               <div className="mt-1.5 text-[11px] uppercase tracking-[0.18em] text-white/70">{t('localTime')}</div>
             </div>
@@ -98,13 +98,13 @@ export function SkyPanel({ place, index, nextName, label, canSwitch, override, o
                 <div className="mt-1 text-sm font-light text-white/75">
                   {t('feels')} {Math.round(w.current.feelsLike)}° · {t('high')} {Math.round(today!.tMax)}° {t('low')} {Math.round(today!.tMin)}°
                 </div>
-                {stale && <div className="mt-1 text-xs text-white/60">{t('updated', { when: t(ago.key, { n: ago.n }) })}</div>}
+                {stale && <div className="mt-1 text-xs text-white/60">{t('updated', { when: ago })}</div>}
               </>
             ) : q.isError ? (
               <div className="text-sm text-white/80">
                 {t('unreachable')}
                 <button
-                  className="ml-2 underline"
+                  className="ms-2 underline"
                   onClick={(e) => {
                     e.stopPropagation()
                     q.refetch()

@@ -81,7 +81,7 @@ const NOON_ICT = Date.parse('2026-10-03T05:00:00Z') // 12:00 in Chiang Mai
 test('rain soon pushes once, then is deduped', async () => {
   const { push, sent } = await setup(NOON_ICT, { precip: [0, 0, 0.6, 0.8, 0, 0, 0, 0] }, { rain: true })
   expect(await push.tick()).toBe(1)
-  expect(sent[0].payload.body).toMatch(/Rain in about \d+ min/)
+  expect(sent[0].payload.body).toMatch(/Rain in about \d+ mins?/)
   expect(sent[0].payload.title).toBe('Chiang Mai')
   expect(await push.tick()).toBe(0)
 })
@@ -189,4 +189,33 @@ test('humid heat (wet-bulb 28.5) pushes; unstable air (storm risk) does not', as
   expect(humid.sent[0].payload.title).toContain('Very humid heat')
   const unstable = await setup(NOON_ICT, { cape: 3200, li: -6 }, { alerts: true })
   expect(await unstable.push.tick()).toBe(0)
+})
+
+test('push uses the city name in the subscriber language (stored map, then geocoder, else default)', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'ts-push-'))
+  const places = [
+    { id: 'p:g1153671', name: 'Chiang Mai', lat: 18.79, lon: 98.98, tz: 'Asia/Bangkok', utcOffsetMin: 420 }, // looked up
+    { id: 'home', name: 'Home', names: { th: 'บ้าน' }, lat: 1, lon: 2, tz: 'Asia/Tokyo', utcOffsetMin: 540 }, // stored
+    { id: 'p:m1', name: 'Manual', lat: 3, lon: 4, tz: 'UTC', utcOffsetMin: 0 }, // no geocoder id, no names
+  ]
+  let lookups = 0
+  const sent: any[] = []
+  const base = fakeFetch(NOON_ICT, { precip: [0, 0, 0.9, 0, 0, 0, 0, 0] })
+  const push = createPush({
+    dataDir: dir,
+    getPlaces: () => places,
+    now: () => NOON_ICT,
+    fetchJson: async (u: string) => (u.includes('geocoding-api') ? (lookups++, { name: 'เชียงใหม่' }) : base(u)),
+    sendFn: async (_s: unknown, payload: any) => { sent.push(payload) },
+  })
+  await push.init()
+  await push.subscribe({ ...subBody({ rain: true }, ['p:g1153671', 'home', 'p:m1'], 'https://push.example/th'), lang: 'th' })
+  await push.subscribe({ ...subBody({ rain: true }, ['p:g1153671', 'p:m1'], 'https://push.example/en'), lang: 'en' })
+  await push.tick()
+  const th = sent.filter((p) => p.tag?.endsWith('p:g1153671') || true).map((p) => p.title)
+  expect(th).toContain('เชียงใหม่') // geocoder, Thai
+  expect(th).toContain('บ้าน') // stored Thai name
+  expect(th.filter((t) => t === 'Manual').length).toBe(2) // no way to translate: default name, both subscribers
+  expect(th.filter((t) => t === 'Chiang Mai').length).toBe(1) // the English subscriber keeps the stored name
+  expect(lookups).toBe(1) // cached per city and language
 })

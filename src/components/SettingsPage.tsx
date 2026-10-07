@@ -4,14 +4,14 @@ import { Bell, Chevron } from './icons'
 import { SideEditor } from './SideEditor'
 import { useConfig } from '../lib/config'
 import { EXAMPLE_CONFIG } from '../lib/examples'
-import { useI18n } from '../lib/i18n'
+import { LANGS, useI18n } from '../lib/i18n'
 import type { AppConfig, SideConfig } from '../lib/types'
 
 const select = 'rounded-xl border border-white/20 bg-black/30 px-3 py-2 text-[15px] font-light outline-none focus:border-white/50'
 
 /** Full page: edit our two skies, language, waking hours, notifications. */
-export function SettingsPage({ onOpenNotify, onClose }: { onOpenNotify: () => void; onClose: () => void }) {
-  const { t, lang, setLang } = useI18n()
+export function SettingsPage({ onOpenNotify, onOpenLanguage, onClose }: { onOpenNotify: () => void; onOpenLanguage: () => void; onClose: () => void }) {
+  const { t, lang, pref } = useI18n()
   const cfg = useConfig()
   const base: AppConfig = cfg.config ?? EXAMPLE_CONFIG
   const [draft, setDraft] = useState<AppConfig>(() => structuredClone(base))
@@ -61,21 +61,13 @@ export function SettingsPage({ onOpenNotify, onClose }: { onOpenNotify: () => vo
           <SideEditor title={t('welcomeStepA')} value={draft.sides[0]} onChange={(v) => setSide(0, v)} takenIds={taken(0)} />
           <SideEditor title={t('welcomeStepB')} value={draft.sides[1]} onChange={(v) => setSide(1, v)} takenIds={taken(1)} />
 
-          <section className="glass p-5">
-            <h3 className="text-lg font-light tracking-tight">{t('language')}</h3>
-            <div className="mt-3 flex gap-2">
-              {(['en', 'th'] as const).map((l) => (
-                <button
-                  key={l}
-                  onClick={() => setLang(l)}
-                  aria-pressed={lang === l}
-                  className={`flex-1 rounded-2xl border px-4 py-2.5 text-[15px] font-light transition ${lang === l ? 'border-white/60 bg-white/20' : 'border-white/20 text-white/70'}`}
-                >
-                  {l === 'en' ? 'English' : 'ไทย'}
-                </button>
-              ))}
-            </div>
-          </section>
+          <button onClick={onOpenLanguage} className="glass flex w-full items-center justify-between p-5 text-start transition active:scale-[0.99]">
+            <span>
+              <span className="block text-lg font-light tracking-tight">{t('language')}</span>
+              <span className="block text-sm font-light text-white/60">{pref === 'auto' ? t('languageAuto') : LANGS.find((l) => l.code === lang)?.name}</span>
+            </span>
+            <span className="text-white/60 rtl:rotate-180">›</span>
+          </button>
 
           <section className="glass p-5">
             <h3 className="text-lg font-light tracking-tight">{t('wakingHours')}</h3>
@@ -97,7 +89,7 @@ export function SettingsPage({ onOpenNotify, onClose }: { onOpenNotify: () => vo
             {!hoursOk && <p className="mt-2 text-sm font-light text-rose-200">{t('from')} &lt; {t('to')}</p>}
           </section>
 
-          <button onClick={onOpenNotify} className="glass flex w-full items-center justify-between p-5 text-left transition active:scale-[0.99]">
+          <button onClick={onOpenNotify} className="glass flex w-full items-center justify-between p-5 text-start transition active:scale-[0.99]">
             <span>
               <span className="block text-lg font-light tracking-tight">{t('notifications')}</span>
               <span className="block text-sm font-light text-white/60">{t('notifyIntro')}</span>

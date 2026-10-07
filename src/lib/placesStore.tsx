@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useConfig } from './config'
+import { useI18n } from './i18n'
+import { ensureNames } from './placeNames'
 import type { Place, StoredPlace } from './types'
 import { tzOffsetMin } from './tz'
 
@@ -43,6 +45,7 @@ const PlacesContext = createContext<Ctx | null>(null)
 
 export function PlacesProvider({ children }: { children: ReactNode }) {
   const { ourCities } = useConfig()
+  const { lang } = useI18n()
   const [records, setRecords] = useState<StoredPlace[]>(loadCache)
 
   // server list is shared between devices and wins when reachable
@@ -79,6 +82,11 @@ export function PlacesProvider({ children }: { children: ReactNode }) {
     const all = [...ourCities, ...custom]
     return { all, custom, byId: (id) => all.find((p) => p.id === id), add, remove }
   }, [records, ourCities, add, remove])
+
+  // look up names in the UI language for everything we can show
+  useEffect(() => {
+    void ensureNames(value.all, lang)
+  }, [value.all, lang])
 
   return <PlacesContext.Provider value={value}>{children}</PlacesContext.Provider>
 }

@@ -1,5 +1,6 @@
-import { motion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
+import { LanguageSheet } from './LanguageSheet'
 import { SideEditor } from './SideEditor'
 import { useConfig } from '../lib/config'
 import { EXAMPLE_CONFIG } from '../lib/examples'
@@ -8,7 +9,8 @@ import type { SideConfig } from '../lib/types'
 
 /** First run: pick the two skies. */
 export function WelcomeScreen() {
-  const { t, lang, setLang } = useI18n()
+  const { t, lang } = useI18n()
+  const [langOpen, setLangOpen] = useState(false)
   const cfg = useConfig()
   const [step, setStep] = useState<0 | 1>(0)
   const [sides, setSides] = useState<[SideConfig, SideConfig]>([{ places: [] }, { places: [] }])
@@ -34,8 +36,8 @@ export function WelcomeScreen() {
     >
       <div className="mx-auto flex min-h-full max-w-lg flex-col px-5 pb-10 pt-[max(1.25rem,env(safe-area-inset-top))]">
         <div className="flex justify-end">
-          <button onClick={() => setLang(lang === 'en' ? 'th' : 'en')} className="glass px-3.5 py-1.5 text-xs font-normal" style={{ borderRadius: 999 }}>
-            {t('langToggle')}
+          <button onClick={() => setLangOpen(true)} aria-label={t('language')} className="glass px-3.5 py-1.5 text-xs font-normal" style={{ borderRadius: 999 }}>
+            {lang.slice(0, 2).toUpperCase()}
           </button>
         </div>
 
@@ -86,6 +88,7 @@ export function WelcomeScreen() {
           )}
         </div>
       </div>
+      <AnimatePresence>{langOpen && <LanguageSheet onClose={() => setLangOpen(false)} />}</AnimatePresence>
     </div>
   )
 }

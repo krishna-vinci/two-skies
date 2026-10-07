@@ -7,8 +7,8 @@ import { Chevron, WeatherIcon } from '../icons'
 import { weatherLabel } from '../../../shared/messages.js'
 import { AqiCard, Daily, HeadsUp, Hourly, SunArc, Stats, WindCompass } from './cards'
 import { localTime } from '../../lib/couple'
-import { agoParts, useNow } from '../../lib/hooks'
-import { placeLabels, useI18n } from '../../lib/i18n'
+import { agoText, useNow } from '../../lib/hooks'
+import { useI18n } from '../../lib/i18n'
 import type { Place } from '../../lib/types'
 import { useWeather } from '../../lib/useWeather'
 import { describeWeather } from '../../lib/weatherCodes'
@@ -33,9 +33,9 @@ export function DetailView({ place, from, override, onClose }: { place: Place; f
   const scroller = useRef<HTMLDivElement>(null)
   const ptr = usePullToRefresh(scroller, true)
   const kind = w ? describeWeather(w.current.code).kind : null
-  const { t, lang } = useI18n()
-  const labels = placeLabels(place, lang)
-  const ago = agoParts(q.dataUpdatedAt, now.getTime())
+  const { t, lang, label } = useI18n()
+  const labels = label(place)
+  const ago = agoText(q.dataUpdatedAt, now.getTime(), lang, t('justNow'))
 
   const clip = reduce
     ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
@@ -60,9 +60,9 @@ export function DetailView({ place, from, override, onClose }: { place: Place; f
             <button onClick={onClose} aria-label={t('back')} className="glass flex h-11 w-11 items-center justify-center" style={{ borderRadius: 999 }}>
               <Chevron />
             </button>
-            <div className="text-soft-shadow text-right text-sm font-light tabular-nums">
+            <div className="text-soft-shadow text-end text-sm font-light tabular-nums">
               {localTime(now, place)} {t('localSuffix')}
-              {q.dataUpdatedAt ? <div className="text-xs text-white/60">{t('updated', { when: t(ago.key, { n: ago.n }) })}</div> : null}
+              {q.dataUpdatedAt ? <div className="text-xs text-white/60">{t('updated', { when: ago })}</div> : null}
             </div>
           </div>
 

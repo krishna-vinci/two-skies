@@ -3,7 +3,7 @@ export type PushSupport = 'ok' | 'unsupported' | 'needs-https' | 'ios-install'
 export interface PushSettings {
   places: string[]
   prefs: { rain: boolean; alerts: boolean; morning: boolean; hourly: boolean; hourlyChanged: boolean }
-  lang: 'en' | 'th'
+  lang: string
 }
 
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)

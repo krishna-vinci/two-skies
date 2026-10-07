@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Pin } from './icons'
-import { manualRecord, resolveTz, searchCities, withBothNames, type IdPrefix } from '../lib/geocode'
-import { placeLabels, useI18n } from '../lib/i18n'
+import { manualRecord, resolveTz, searchCities, withEnglishName, type IdPrefix } from '../lib/geocode'
+import { seedName } from '../lib/placeNames'
+import { useI18n } from '../lib/i18n'
 import type { StoredPlace } from '../lib/types'
 
 const field = 'w-full rounded-2xl border border-white/20 bg-black/25 px-4 py-3 text-[15px] font-light outline-none placeholder:text-white/40 focus:border-white/50'
@@ -21,7 +22,7 @@ export function CitySearch({
   known?: Set<string>
   autoFocus?: boolean
 }) {
-  const { t, lang } = useI18n()
+  const { t, lang, label } = useI18n()
   const [q, setQ] = useState('')
   const [results, setResults] = useState<StoredPlace[] | null>(null)
   const [busy, setBusy] = useState(false)
@@ -69,7 +70,8 @@ export function CitySearch({
   const pick = async (r: StoredPlace) => {
     setBusy(true)
     try {
-      await onPick(await withBothNames(r))
+      if (lang !== 'en') seedName(r.id, lang, { name: r.name, subtitle: r.subtitle })
+      await onPick(await withEnglishName(r))
       reset()
     } finally {
       setBusy(false)
@@ -102,16 +104,16 @@ export function CitySearch({
           {results && results.length > 0 && (
             <ul className="space-y-0.5">
               {results.map((r) => {
-                const l = placeLabels({ ...r, utcOffsetMin: 0 }, lang)
+                const l = label(r)
                 return (
                   <li key={r.id}>
-                    <button onClick={() => pick(r)} disabled={busy} className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition hover:bg-white/10 disabled:opacity-60">
+                    <button onClick={() => pick(r)} disabled={busy} className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-start transition hover:bg-white/10 disabled:opacity-60">
                       <span className="shrink-0 text-sky-200"><Pin size={16} /></span>
                       <span className="min-w-0">
                         <span className="block truncate text-[15px] font-light">{l.title}</span>
                         {l.sub && <span className="block truncate text-xs font-light text-white/55">{l.sub}</span>}
                       </span>
-                      <span className="ml-auto shrink-0 text-xs text-white/60">{known?.has(r.id) ? '✓' : `+ ${t('addBtn')}`}</span>
+                      <span className="ms-auto shrink-0 text-xs text-white/60">{known?.has(r.id) ? '✓' : `+ ${t('addBtn')}`}</span>
                     </button>
                   </li>
                 )

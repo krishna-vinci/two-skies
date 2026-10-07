@@ -1,5 +1,6 @@
 import { motion } from 'motion/react'
 import type { ReactNode } from 'react'
+import { formatDuration } from '../../../shared/format.js'
 import { alertText, nowcastText, rainChanceText } from '../../../shared/messages.js'
 import { AlertIcon, Drop, WeatherIcon } from '../icons'
 import { aqiCategory, uvKey } from '../../lib/labels'
@@ -112,8 +113,8 @@ export function Daily({ place, w }: { place: Place; w: Weather }) {
                 {i === 0 ? t('today') : fmt(place.tz, { weekday: 'short' }, d.date + 12 * 3600_000, localeFor(lang))}
               </span>
               <WeatherIcon kind={desc.kind} size={22} />
-              <span className="w-9 text-right text-xs text-sky-200/80">{d.precipProbMax > 15 ? `${d.precipProbMax}%` : ''}</span>
-              <span className="w-7 text-right tabular-nums text-white/65">{Math.round(d.tMin)}°</span>
+              <span className="w-9 text-end text-xs text-sky-200/80">{d.precipProbMax > 15 ? `${d.precipProbMax}%` : ''}</span>
+              <span className="w-7 text-end tabular-nums text-white/65">{Math.round(d.tMin)}°</span>
               <div className="relative h-1.5 flex-1 rounded-full bg-white/15">
                 <div
                   className="absolute h-full rounded-full"
@@ -130,7 +131,7 @@ export function Daily({ place, w }: { place: Place; w: Weather }) {
 }
 
 export function SunArc({ place, w, now }: { place: Place; w: Weather; now: number }) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const d = w.daily[0]
   const raw = (now - d.sunrise) / (d.sunset - d.sunrise)
   const isDay = raw >= 0 && raw <= 1
@@ -162,7 +163,7 @@ export function SunArc({ place, w, now }: { place: Place; w: Weather; now: numbe
         )}
         <text x="30" y="160" textAnchor="middle" fontSize="12" fill="rgba(255,255,255,0.8)">{fmt(place.tz, { hour: '2-digit', minute: '2-digit', hour12: false }, d.sunrise)}</text>
         <text x="270" y="160" textAnchor="middle" fontSize="12" fill="rgba(255,255,255,0.8)">{fmt(place.tz, { hour: '2-digit', minute: '2-digit', hour12: false }, d.sunset)}</text>
-        <text x="150" y="112" textAnchor="middle" fontSize="22" fontWeight="200" fill="#fff">{Math.floor(mins / 60)}h {mins % 60}m</text>
+        <text x="150" y="112" textAnchor="middle" fontSize="22" fontWeight="200" fill="#fff">{formatDuration(mins, lang, 'narrow')}</text>
         <text x="150" y="130" textAnchor="middle" fontSize="10" letterSpacing="2" fill="rgba(255,255,255,0.55)">{t('daylight')}</text>
       </svg>
     </Card>

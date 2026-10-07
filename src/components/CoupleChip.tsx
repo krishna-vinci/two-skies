@@ -1,6 +1,6 @@
 import { Heart, Pin, Sliders } from './icons'
 import { formatDiff, tempGap, timeDiffMin } from '../lib/couple'
-import { placeLabels, useI18n } from '../lib/i18n'
+import { useI18n } from '../lib/i18n'
 import type { Place } from '../lib/types'
 import { useWeather } from '../lib/useWeather'
 
@@ -10,15 +10,16 @@ interface Props {
   onTogether: () => void
   onSettings: () => void
   onPlaces: () => void
+  onLanguage: () => void
 }
 
-export function CoupleChip({ a, b, onTogether, onSettings, onPlaces }: Props) {
-  const { t, lang, setLang } = useI18n()
+export function CoupleChip({ a, b, onTogether, onSettings, onPlaces, onLanguage }: Props) {
+  const { t, lang, label } = useI18n()
   const wa = useWeather(a).data
   const wb = useWeather(b).data
   const diff = timeDiffMin(a, b)
   const gap = wa && wb ? tempGap(wa.current.temp, wb.current.temp) : null
-  const bName = placeLabels(b, lang).title
+  const bName = label(b).title
   const timeText = diff === 0 ? t('sameTime') : `${bName} ${diff > 0 ? '+' : '−'}${formatDiff(diff, lang)}`
   const gapText = !gap ? '' : gap.delta === 0 ? t('chipSame') : t(gap.delta > 0 ? 'chipWarmer' : 'chipCooler', { n: Math.abs(gap.delta) })
   const round = 'glass glass-strong flex h-8 w-8 shrink-0 items-center justify-center text-[11.5px] font-normal transition active:scale-95'
@@ -40,8 +41,8 @@ export function CoupleChip({ a, b, onTogether, onSettings, onPlaces }: Props) {
           </>
         )}
       </button>
-      <button onClick={() => setLang(lang === 'en' ? 'th' : 'en')} className={round} style={{ borderRadius: 999 }} aria-label="Language">
-        {t('langToggle')}
+      <button onClick={onLanguage} className={round} style={{ borderRadius: 999 }} aria-label={t('language')}>
+        {lang.slice(0, 2).toUpperCase()}
       </button>
       <button onClick={onPlaces} className={round} style={{ borderRadius: 999 }} aria-label={t('places')}>
         <Pin size={15} />

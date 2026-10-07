@@ -6,7 +6,7 @@ import { Chevron, Close, WeatherIcon } from './icons'
 import { PullIndicator } from './PullIndicator'
 import { localTime } from '../lib/couple'
 import { useNow } from '../lib/hooks'
-import { placeLabels, useI18n } from '../lib/i18n'
+import { useI18n } from '../lib/i18n'
 import { usePlaces } from '../lib/placesStore'
 import type { Place } from '../lib/types'
 import { usePullToRefresh } from '../lib/usePullToRefresh'
@@ -17,17 +17,17 @@ import { useSky } from '../sky/useSky'
 
 /** One added place: a tile tinted with that place's live sky colours. */
 function PlaceCard({ place, onOpen, onRemove }: { place: Place; onOpen: (rect: DOMRect) => void; onRemove: () => void }) {
-  const { t, lang } = useI18n()
+  const { t, lang, label } = useI18n()
   const w = useWeather(place).data
   const sky = useSky(place, w)
   const now = useNow(30_000)
-  const labels = placeLabels(place, lang)
+  const labels = label(place)
   const kind = w ? describeWeather(w.current.code).kind : null
   return (
     <li className="relative">
       <button
         onClick={(e) => onOpen(e.currentTarget.getBoundingClientRect())}
-        className="relative block w-full overflow-hidden rounded-[26px] border border-white/15 p-4 pr-12 text-left shadow-[0_8px_30px_rgba(0,0,0,0.25)] transition active:scale-[0.99]"
+        className="relative block w-full overflow-hidden rounded-[26px] border border-white/15 p-4 pe-12 text-start shadow-[0_8px_30px_rgba(0,0,0,0.25)] transition active:scale-[0.99]"
         style={{ background: `linear-gradient(170deg, ${rgba(sky.top)}, ${rgba(sky.mid)} 55%, ${rgba(sky.bottom)})`, minHeight: 112 }}
       >
         <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent" />
@@ -40,7 +40,7 @@ function PlaceCard({ place, onOpen, onRemove }: { place: Place; onOpen: (rect: D
             </div>
           </div>
           {w && kind ? (
-            <div className="shrink-0 text-right">
+            <div className="shrink-0 text-end">
               <div className="text-5xl font-extralight leading-none tracking-tight tabular-nums">{Math.round(w.current.temp)}°</div>
               <div className="mt-1.5 flex items-center justify-end gap-1.5 text-[13px] font-light">
                 <WeatherIcon kind={kind} isDay={w.current.isDay} size={16} />
@@ -58,7 +58,7 @@ function PlaceCard({ place, onOpen, onRemove }: { place: Place; onOpen: (rect: D
       <button
         onClick={onRemove}
         aria-label={t('removePlace')}
-        className="absolute right-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/25 text-white/80 backdrop-blur transition hover:bg-black/45"
+        className="absolute end-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/25 text-white/80 backdrop-blur transition hover:bg-black/45"
       >
         <Close size={14} />
       </button>
