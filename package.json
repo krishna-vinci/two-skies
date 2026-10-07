@@ -9,7 +9,8 @@
     "start": "node server/server.mjs",
     "preview": "vite preview",
     "test": "vitest run",
-    "lint": "oxlint"
+    "lint": "oxlint",
+    "i18n:check": "node scripts/i18n-check.mjs"
   },
   "dependencies": {
     "web-push": "^3.6.7"

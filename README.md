@@ -11,7 +11,7 @@ Two Skies shows the weather where **you** are and where **they** are, side by si
 - **Gentle heads-up, not noise.** "Rain in about 25 min", air-quality, heat, humid-heat, UV and thunderstorm warnings, plus an optional hourly update and morning summary as web-push notifications.
 - **Yours.** One password, no accounts, no tracking. You host it; your data stays on your server.
 - **Installable.** A PWA you add to your home screen, with offline cache and pull-to-refresh.
-- **English and Thai** out of the box, easy to add more.
+- **13 languages** out of the box: English, Spanish, French, German, Portuguese, Italian, Hindi, Japanese, Korean, Chinese, Indonesian, Vietnamese and Thai. It follows your phone's language, or you can pick one. Adding another takes about ten minutes ([guide](docs/translating.md)).
 - **Free data.** Weather comes from [Open-Meteo](https://open-meteo.com/); no API key needed.
 
 ## Screenshots
@@ -27,7 +27,13 @@ Two Skies shows the weather where **you** are and where **they** are, side by si
     <td align="center"><img src="docs/screenshots/places.png" width="220" alt="Places"><br><sub>Places: browse any city</sub></td>
     <td align="center"><img src="docs/screenshots/settings.png" width="220" alt="Settings"><br><sub>Settings</sub></td>
     <td align="center"><img src="docs/screenshots/notifications.png" width="220" alt="Notifications"><br><sub>Notifications</sub></td>
-    <td align="center"><img src="docs/screenshots/home-th.png" width="220" alt="Thai interface"><br><sub>Thai interface</sub></td>
+    <td align="center"><img src="docs/screenshots/home-ja.png" width="220" alt="Japanese interface"><br><sub>Japanese (13 languages)</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/language.png" width="220" alt="Language picker"><br><sub>Language picker</sub></td>
+    <td align="center"><img src="docs/screenshots/home-th.png" width="220" alt="Thai interface"><br><sub>Thai</sub></td>
+    <td></td>
+    <td></td>
   </tr>
 </table>
 
@@ -143,7 +149,8 @@ More about the data source, including what the API offers beyond what this app u
 ```bash
 npm ci
 npm run dev        # http://localhost:5173, demo mode: example cities, nothing is saved
-npm test           # unit tests (rules, sky model, config, push scheduler, ...)
+npm test           # unit tests (rules, sky model, config, push scheduler, translations, ...)
+npm run i18n:check # how complete each language is; fails on broken {placeholders}
 npm run build      # production build into dist/
 ```
 
@@ -162,13 +169,20 @@ docs/           notes and screenshots
 
 ### Adding a language
 
-1. In `src/lib/i18n.tsx`, add the language to `Lang`, add a dictionary typed `Record<Key, string>` (the compiler lists every missing string), register it in `DICT`, and add a `localeFor` entry.
-2. In `shared/messages.js`, add the alert, nowcast and weather-label texts (used by the UI and by push notifications).
-3. Add a button to the language switcher in `src/components/SettingsPage.tsx` and `CoupleChip.tsx`.
+All wording lives in `shared/locales/<code>.json`, so a new language is one file plus one line:
+
+1. `cp shared/locales/en.json shared/locales/xx.json`
+2. Translate the **values** (keep the keys and every `{placeholder}`).
+3. Add it to `shared/locales/index.js` (its name in its own language, `rtl` or `ltr`, and a locale tag).
+4. `npm run i18n:check`, then `npm run dev` and open `/?lang=xx`.
+
+Anything you don't translate shows in English. Durations, "5 minutes ago", weekdays and city names are handled automatically. The full guide, with tips and a table of what each key is for, is in [docs/translating.md](docs/translating.md).
 
 ## Good to know
 
 - It is built for **two people**, not many: one shared password, one shared setup.
+- Translations other than English are first drafts and haven't all been reviewed by native speakers; corrections are very welcome (see the guide above).
+- Right-to-left layout is supported, but no right-to-left language ships yet. If you add Arabic, Hebrew or Persian, please check the screens.
 - The city search can't find neighbourhoods; use "Add by coordinates" for those.
 - Fonts are loaded from Google Fonts (`index.html`). If that matters to you, self-host them.
 - Open-Meteo's free tier is for **non-commercial** use and asks for attribution, which the app shows in the forecast view. Please keep it.
