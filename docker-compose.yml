@@ -1,0 +1,11 @@
+services:
+  two-skies:
+    build: .
+    image: two-skies
+    container_name: two-skies
+    restart: unless-stopped
+    ports:
+      - "47318:47318"
+    env_file: .env
+    volumes:
+      - ./data:/data   # your cities, push subscriptions and session secret live here

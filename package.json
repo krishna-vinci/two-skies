@@ -1,31 +1,32 @@
 {
   "name": "two-skies",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "oxlint",
+    "start": "node server/server.mjs",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint": "oxlint"
   },
   "dependencies": {
-    "@tanstack/query-sync-storage-persister": "^5.104.1",
-    "@tanstack/react-query": "^5.104.1",
-    "@tanstack/react-query-persist-client": "^5.104.1",
-    "motion": "^14.0.0",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "@tanstack/query-sync-storage-persister": "^5.104.1",
+    "@tanstack/react-query": "^5.104.1",
+    "@tanstack/react-query-persist-client": "^5.104.1",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
+    "motion": "^14.0.0",
     "oxlint": "^1.81.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
     "vite": "^8.3.0",
@@ -34,5 +35,19 @@
     "workbox-core": "^7.4.1",
     "workbox-precaching": "^7.4.1",
     "workbox-routing": "^7.4.1"
-  }
+  },
+  "description": "A private weather PWA for two people in two places: two live skies, side by side.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "keywords": [
+    "weather",
+    "pwa",
+    "open-meteo",
+    "couple",
+    "long-distance",
+    "web-push",
+    "self-hosted"
+  ]
 }

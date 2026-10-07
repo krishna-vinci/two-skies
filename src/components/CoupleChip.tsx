@@ -21,14 +21,14 @@ export function CoupleChip({ a, b, onTogether, onSettings, onPlaces }: Props) {
   const bName = placeLabels(b, lang).title
   const timeText = diff === 0 ? t('sameTime') : `${bName} ${diff > 0 ? '+' : '−'}${formatDiff(diff, lang)}`
   const gapText = !gap ? '' : gap.delta === 0 ? t('chipSame') : t(gap.delta > 0 ? 'chipWarmer' : 'chipCooler', { n: Math.abs(gap.delta) })
-  const round = 'glass flex h-8 w-8 shrink-0 items-center justify-center text-[11.5px] font-normal transition active:scale-95'
+  const round = 'glass glass-strong flex h-8 w-8 shrink-0 items-center justify-center text-[11.5px] font-normal transition active:scale-95'
 
   return (
     <div className="absolute left-1/2 top-1/2 z-20 flex max-w-[calc(100vw-1rem)] -translate-x-1/2 -translate-y-1/2 items-center gap-1.5">
       <button
         onClick={onTogether}
         aria-label={t('together')}
-        className="glass flex min-w-0 items-center gap-2.5 whitespace-nowrap px-3 py-2 text-[12.5px] font-light transition active:scale-[0.98]"
+        className="glass glass-strong flex min-w-0 items-center gap-2.5 whitespace-nowrap px-3 py-2 text-[12.5px] font-light transition active:scale-[0.98]"
         style={{ borderRadius: 999 }}
       >
         <span className="shrink-0 text-rose-200/90"><Heart size={13} /></span>

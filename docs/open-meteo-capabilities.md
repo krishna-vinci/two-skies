@@ -1,16 +1,18 @@
 # Open-Meteo: what exists, what we use, what we don't
 
-Checked 2026-10-04 against the official docs **and** live calls for Kothagudem (17.55, 80.62), Khon Kaen (16.44, 102.84) and Bangkok. Status marks:
+Checked 2026-10-04 against the official docs **and** live calls for example locations in India and Thailand. Status marks:
 ✅ called live and returned data · ⚠️ listed in docs but rejected or empty in our setup · 📄 docs only (not called).
 
-## What Two Skies uses today
+## What Two Skies uses
 
-| API | What we take |
+| API | What it takes |
 |---|---|
-| Forecast `api.open-meteo.com/v1/forecast` | current: temp, feels-like, humidity, is_day, precipitation, weather_code, cloud_cover, wind speed/direction, uv_index · hourly: temp, precip probability, weather_code, is_day · daily: weather_code, max/min temp, max apparent temp, sunrise, sunset, precip probability max, uv max · minutely_15: precipitation (8 slots) |
-| Air quality `air-quality-api.open-meteo.com/v1/air-quality` | current: us_aqi, pm2_5, pm10 |
+| Forecast `api.open-meteo.com/v1/forecast` | **current**: temperature, feels-like, humidity, is_day, precipitation, weather code, cloud cover, wind speed/direction, UV index, wet-bulb temperature. **hourly**: temperature, precipitation probability, weather code, is_day, CAPE, lifted index, wet-bulb. **daily**: weather code, max/min temperature, max apparent temperature, sunrise, sunset, precipitation probability max, UV max. **minutely_15**: precipitation (the rain nowcast) |
+| Air quality `air-quality-api.open-meteo.com/v1/air-quality` | current US AQI, PM2.5, PM10 |
+| Ensemble `ensemble-api.open-meteo.com/v1/ensemble` | ECMWF IFS (51 members): share of members with rain, per hour, for the rain chance |
+| Geocoding `geocoding-api.open-meteo.com/v1/search` and `/v1/get` | the city search, and the English plus Thai name of a chosen city |
 
-Everything else below is unused.
+Everything else in this document is unused.
 
 ## Free tier and licence
 
@@ -22,23 +24,23 @@ Everything else below is unused.
 
 | API | Endpoint | What it gives | Verdict for us |
 |---|---|---|---|
-| **Ensemble** | `ensemble-api.open-meteo.com/v1/ensemble` | Every member of 13+ ensemble models (ECMWF IFS has **51**), up to 35 days | ✅ **Best underused.** Counting wet members gives a real "% chance of rain" (tested: 25% / 12% / 6% / 37% across the next 12 h at Khon Kaen) instead of a single yes/no |
+| **Ensemble** | `ensemble-api.open-meteo.com/v1/ensemble` | Every member of 13+ ensemble models (ECMWF IFS has **51**), up to 35 days | ✅ **Best underused.** Counting wet members gives a real "% chance of rain" (for example 25% / 12% / 6% / 37% across the next 12 h at a Thai city) instead of a single yes/no |
 | **Air quality (more)** | same host | hourly forecast 5 days (CAMS Global, ~45 km): pm2_5, pm10, us_aqi, european_aqi + per-pollutant sub-indexes, ozone, NO2, SO2, CO, CO2, NH3, methane, dust, aerosol_optical_depth, uv_index(_clear_sky). Pollen is **Europe only**. | ✅ hourly forecast works (72/72 values). We only read "now". Dust was 0 (✅ returns, just quiet today). 45 km grid is coarse |
-| **Flood** | `flood-api.open-meteo.com/v1/flood` | GloFAS v4 river discharge (m³/s), daily, ~5 km, up to 7 months, 50 ensemble members | ⚠️ works but picks "the largest river in the 5 km cell". Kothagudem read 13 m³/s and falling, which is likely a minor stream, not the Godavari. Usable as a **trend**, not an absolute level, unless coordinates are nudged |
-| **Historical (ERA5)** | `archive-api.open-meteo.com/v1/archive` | Reanalysis 1940→now (ERA5 25 km, ERA5-Land 11 km), 5-day delay | ✅ "same day last year" works (Khon Kaen 2025-10-04 max 31.0°). Enables "hotter than usual" context |
+| **Flood** | `flood-api.open-meteo.com/v1/flood` | GloFAS v4 river discharge (m³/s), daily, ~5 km, up to 7 months, 50 ensemble members | ⚠️ works but picks "the largest river in the 5 km cell". A point near a large river can still read like a minor stream (13 m³/s in one test), so use it as a **trend**, not an absolute level, unless coordinates are nudged |
+| **Historical (ERA5)** | `archive-api.open-meteo.com/v1/archive` | Reanalysis 1940→now (ERA5 25 km, ERA5-Land 11 km), 5-day delay | ✅ "same day last year" works (e.g. 31.0° for the same date a year earlier). Enables "hotter than usual" context |
 | **Historical forecast** | `historical-forecast-api.open-meteo.com/v1/forecast` | Archived forecasts as issued | ✅ responds. Niche |
 | **Previous runs** | `previous-runs-api.open-meteo.com/v1/forecast` | What the model said 1-7 days earlier (`*_previous_day1` …), from 2024 | ✅ responds. Could show "how good was yesterday's forecast". Niche |
 | **Climate** | `climate-api.open-meteo.com/v1/climate` | CMIP6 HighResMIP, 7 models, 1950-2050, 10 km, daily | ✅ responds. Long-term trends only; no day-to-day use |
 | **Seasonal** | `seasonal-api.open-meteo.com/v1/seasonal` | ECMWF SEAS5 (7 months) and EC46 (46 days), 51 members, 36 km, "warmer/wetter than normal" | ✅ responds. Useful for monsoon / hot-season planning, not for daily weather |
 | **Marine** | `marine-api.open-meteo.com/v1/marine` | wave height/direction/period, wind waves, 3 swells, ocean current, sea-surface temp, sea level (tides), 5 km, 16 days | ✅ responds. Only relevant if either of you visits a coast; "not suitable for coastal navigation" |
 | **Satellite radiation** | `satellite-api.open-meteo.com/v1/archive` | Himawari (covers India/Asia) and others: GHI, DNI, diffuse, GTI, 2.5-5 km, 10-30 min, 30 min delay | ✅ responds. Solar-energy use; not for us |
-| **Geocoding** | `geocoding-api.open-meteo.com/v1/search` | name → lat, lon, elevation, timezone, population, admin1-4, country_code, postcodes; `language`, `countryCode`, `count` ≤ 100 | ✅ **Needed for the add-location page.** Thai queries work ("ขอนแก่น"). Neighbourhoods are **not** indexed ("Sujatha Nagar" returned nothing); "Kothagudem" resolves as "Kottagūdem". So the page needs a manual lat/lon fallback |
+| **Geocoding** | `geocoding-api.open-meteo.com/v1/search` | name → lat, lon, elevation, timezone, population, admin1-4, country_code, postcodes; `language`, `countryCode`, `count` ≤ 100 | ✅ **Needed for the add-location page.** Thai queries work ("เชียงใหม่"). Neighbourhoods are **not** indexed (a small district name returned nothing) and some towns resolve under a transliterated spelling, so the city search offers an "Add by coordinates" fallback |
 | **Elevation** | `api.open-meteo.com/v1/elevation` | Copernicus DEM 90 m, up to 100 points per call | ✅ responds. Forecast already downscales to the DEM, so little to gain |
 
 ## Forecast API: variables we don't request
 
 ### Hourly (also valid as `current` and, where noted, 15-minutely)
-- **Convection / thunder**: `cape` ✅ (1700 J/kg at Khon Kaen right now), `lifted_index` ✅ (-4.7), `convective_inhibition` ✅, `boundary_layer_height` ✅. 📄 `lightning_potential_index` is documented for 15-minutely but **rejected** (⚠️) on the default model and on `icon_global`.
+- **Convection / thunder**: `cape` ✅ (1700 J/kg at a tropical city one evening), `lifted_index` ✅ (-4.7), `convective_inhibition` ✅, `boundary_layer_height` ✅. 📄 `lightning_potential_index` is documented for 15-minutely but **rejected** (⚠️) on the default model and on `icon_global`.
 - **Heat stress**: `wet_bulb_temperature_2m` ✅ (24.6°), `dew_point_2m` ✅, `vapour_pressure_deficit` ✅.
 - **Wind**: `wind_gusts_10m` ✅; 📄 `wind_speed_/wind_direction_` at 80, 120, 180 m; `temperature_` at 80, 120, 180 m.
 - **Pressure**: `pressure_msl` ✅, `surface_pressure` ✅.
@@ -61,18 +63,18 @@ Everything else below is unused.
 ### Models you can pick
 ECMWF IFS HRES 9 km / IFS 0.25° / AIFS, NCEP GFS (0.11°/0.25°), AIGFS, CMA GRAPES, BOM ACCESS, JMA (Seamless/MSM/GSM), KMA (Seamless/LDPS/GDPS), GEM (Global/Regional/HRDPS), DWD ICON (Seamless/Global/EU/D2), Météo-France ARPEGE/AROME, UK Met Office (Global 10 km, UK 2 km), MET Norway, KNMI, DMI, MeteoSwiss, ItaliaMeteo, GeoSphere, CHMI, HRRR/NBM/NAM (US). Default **best match** picks per location. For India and Thailand the useful candidates are ECMWF, ICON, GFS and JMA.
 
-## What would help most (ranked)
+## What was worth adding, and what could come next
 
-1. **Ensemble rain probability**: turns "rain at 15:00" into "70% chance", and makes any hourly alert trustworthy.
-2. **CAPE + lifted index for storm warnings**: tropical afternoon storms form before the weather code says "thunderstorm". CAPE 1700 and LI -4.7 today at Khon Kaen is exactly the signature.
-3. **Hourly air-quality forecast**: "tomorrow's air is worse", best hour to go outside. Matters for the Khon Kaen burning season. Treat 45 km data as indicative.
-4. **Wet-bulb temperature** for heat alerts: better than feels-like in humid heat, a real safety measure for both climates.
+1. ✅ **Ensemble rain probability** (done): turns "rain at 15:00" into "70% chance", and makes any hourly alert trustworthy.
+2. ✅ **CAPE + lifted index for storm warnings** (done): tropical afternoon storms form before the weather code says "thunderstorm". A CAPE near 1700 with a lifted index near -4.7 on an ordinary evening shows why the thresholds in `shared/rules.js` are set higher.
+3. **Hourly air-quality forecast**: "tomorrow's air is worse", best hour to go outside. Matters in regions with a seasonal burning season. Treat 45 km data as indicative.
+4. ✅ **Wet-bulb temperature** for heat alerts (done): better than feels-like in humid heat, a real safety measure for both climates.
 5. **Wind gusts and visibility**: storm safety, and haze/smoke detection together with PM2.5.
 6. **Context from the past**: `past_days=1` ("3° hotter than yesterday") and ERA5 same-day-last-year ("hotter than usual").
 7. **Moonrise / moonset**: cheap, on-theme ("moonrise 18:42 here, 19:10 there").
 8. **One multi-location call** instead of one per place: fewer requests, faster load.
-9. **Geocoding**: prerequisite for the add-location page.
+9. ✅ **Geocoding** (done): powers the city search.
 10. **Seasonal outlook (EC46)**: nice for planning visits; low urgency.
-11. **River discharge trend** for Kothagudem (Godavari side): only after nudging coordinates to the real river; treat as relative trend.
+11. **River discharge trend**: only after nudging coordinates onto the real river; treat as a relative trend.
 
 Skip: marine, satellite radiation, climate projections, soil/agri variables, snow, pollen (Europe only).
