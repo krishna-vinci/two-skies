@@ -26,15 +26,34 @@ sw.addEventListener('push', (e: any) => {
     d = { body: e.data?.text() }
   }
   e.waitUntil(
-    sw.registration.showNotification(d.title ?? 'Two Skies', {
-      body: d.body,
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      tag: d.tag,
-      data: { url: d.url ?? '/' },
-    }),
+    (async () => {
+      // Android and desktop replace a same-tag notification natively and silently. iOS (WebKit bug 258922)
+      // lists the replacement but leaves the old one on screen, so close earlier ones with this tag by hand.
+      if (d.tag && (await isApplePush())) {
+        const old: any[] = await sw.registration.getNotifications({ tag: d.tag })
+        // iOS may ignore the tag filter, so check the tag again
+        for (const n of old) if (n.tag === d.tag) n.close()
+      }
+      await sw.registration.showNotification(d.title ?? 'Two Skies', {
+        body: d.body,
+        icon: '/icon-192.png',
+        badge: '/icon-192.png',
+        tag: d.tag,
+        data: { url: d.url ?? '/' },
+      })
+    })(),
   )
 })
+
+async function isApplePush(): Promise<boolean> {
+  try {
+    const sub = await sw.registration.pushManager.getSubscription()
+    if (sub) return sub.endpoint.includes('push.apple.com')
+  } catch {
+    /* fall back to the user agent */
+  }
+  return /iPhone|iPad|iPod/.test(sw.navigator?.userAgent ?? '')
+}
 
 sw.addEventListener('notificationclick', (e: any) => {
   e.notification.close()
