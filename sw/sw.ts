@@ -29,10 +29,18 @@ sw.addEventListener('push', (e: any) => {
     (async () => {
       // Android and desktop replace a same-tag notification natively and silently. iOS (WebKit bug 258922)
       // lists the replacement but leaves the old one on screen, so close earlier ones with this tag by hand.
-      if (d.tag && (await isApplePush())) {
-        const old: any[] = await sw.registration.getNotifications({ tag: d.tag })
-        // iOS may ignore the tag filter, so check the tag again
-        for (const n of old) if (n.tag === d.tag) n.close()
+      const diag: Record<string, unknown> = { v: 'sw2', tag: d.tag, ua: sw.navigator?.userAgent?.slice(0, 90) }
+      try {
+        diag.apple = await isApplePush()
+        if (d.tag && diag.apple) {
+          const old: any[] = await sw.registration.getNotifications({ tag: d.tag })
+          diag.found = old.length
+          // iOS may ignore the tag filter, so check the tag again
+          for (const n of old) if (n.tag === d.tag) n.close()
+          diag.afterClose = (await sw.registration.getNotifications({ tag: d.tag })).length
+        }
+      } catch (err: any) {
+        diag.error = String(err?.message ?? err)
       }
       await sw.registration.showNotification(d.title ?? 'Two Skies', {
         body: d.body,
@@ -41,6 +49,14 @@ sw.addEventListener('push', (e: any) => {
         tag: d.tag,
         data: { url: d.url ?? '/' },
       })
+      try {
+        diag.afterShow = (await sw.registration.getNotifications({ tag: d.tag })).length
+        const sub = await sw.registration.pushManager.getSubscription()
+        diag.sub = sub?.endpoint.slice(-14)
+        await fetch('/api/push/diag', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(diag) })
+      } catch {
+        /* diagnostics only */
+      }
     })(),
   )
 })

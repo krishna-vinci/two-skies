@@ -188,6 +188,10 @@ export function createPush({ dataDir, getPlaces = () => [], fetchJson = getJson,
       }
       return json(200, { ok: true })
     }
+    if (path === '/api/push/diag') {
+      console.log('push-diag', JSON.stringify(body).slice(0, 500))
+      return json(200, { ok: true })
+    }
     if (path === '/api/push/state') {
       const e = state.subs[body.endpoint]
       return json(200, e ? { subscribed: true, places: e.places, prefs: e.prefs, lang: e.lang } : { subscribed: false })
