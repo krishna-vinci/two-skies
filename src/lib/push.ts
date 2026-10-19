@@ -34,6 +34,13 @@ const b64ToBytes = (b64: string) => {
   return Uint8Array.from(raw, (c) => c.charCodeAt(0))
 }
 
+function sameKey(sub: PushSubscription, key: Uint8Array) {
+  const have = sub.options?.applicationServerKey
+  if (!have) return false
+  const a = new Uint8Array(have)
+  return a.length === key.length && a.every((v, i) => v === key[i])
+}
+
 async function registration() {
   return navigator.serviceWorker.ready
 }
@@ -55,11 +62,15 @@ export async function enablePush(settings: PushSettings): Promise<'ok' | 'denied
   const perm = await Notification.requestPermission()
   if (perm !== 'granted') return 'denied'
   const reg = await registration()
+  const { key } = await api<{ key: string }>('/api/push/key')
+  const serverKey = b64ToBytes(key)
   let sub = await reg.pushManager.getSubscription()
-  if (!sub) {
-    const { key } = await api<{ key: string }>('/api/push/key')
-    sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(key) as BufferSource })
+  // a subscription made against another server key (the server was rebuilt) can never receive pushes
+  if (sub && !sameKey(sub, serverKey)) {
+    await sub.unsubscribe()
+    sub = null
   }
+  sub ??= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: serverKey as BufferSource })
   await api('/api/push/subscribe', { subscription: sub.toJSON(), ...settings })
   return 'ok'
 }
